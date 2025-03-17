@@ -6,13 +6,22 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Find CUDA (modern method)
-find_package(CUDAToolkit REQUIRED)
+# Detect OS and set library file name
+if(APPLE)
+    message(FATAL_ERROR "AMGX is not supported on macOS. Compilation aborted.")
+elseif(WIN32)
+    set(AMGX_LIB_NAME "amgxsh.dll")
+else()  # Default to Linux
+    set(AMGX_LIB_NAME "libamgxsh.so")
+endif()
 
-# Allow user to specify a custom AMGX installation path
-set(AMGX_CUSTOM_PATH "" CACHE PATH "Custom AMGX installation path")
+# Find required packages
+find_package(CUDAToolkit REQUIRED)
+find_package(pybind11 REQUIRED)
 
 # Set AMGX paths: use custom path if specified, otherwise use the default
+set(AMGX_CUSTOM_PATH "" CACHE PATH "Custom AMGX installation path")
+
 if(AMGX_CUSTOM_PATH)
     set(AMGX_ROOT_DIR "${AMGX_CUSTOM_PATH}")
 else()
@@ -22,36 +31,30 @@ endif()
 set(AMGX_INCLUDE_DIR "${AMGX_ROOT_DIR}/include")
 set(AMGX_LIBRARY_DIR "${AMGX_ROOT_DIR}/lib")
 
-# Ensure AMGX headers exist
+# Ensure AMGX headers and library exist
 if(NOT EXISTS "${AMGX_INCLUDE_DIR}/amgx_c.h")
     message(FATAL_ERROR "AMGX header not found: ${AMGX_INCLUDE_DIR}/amgx_c.h. Set AMGX_CUSTOM_PATH correctly.")
 endif()
-
-# Ensure AMGX library exists
-if(NOT EXISTS "${AMGX_LIBRARY_DIR}/libamgxsh.so")
-    message(FATAL_ERROR "AMGX library not found at ${AMGX_LIBRARY_DIR}/libamgxsh.so")
+if(NOT EXISTS "${AMGX_LIBRARY_DIR}/${AMGX_LIB_NAME}")
+    message(FATAL_ERROR "AMGX library not found at ${AMGX_LIBRARY_DIR}/${AMGX_LIB_NAME}")
 endif()
 
 # Include AMGX headers
 include_directories(${AMGX_INCLUDE_DIR})
 
 # Create library from AMGXSolver
-add_library(solver ${CMAKE_CURRENT_SOURCE_DIR}/SRC/solver/AMGXSolver.cpp)
-
-# Ensure solver can find its own headers
+add_library(solver SHARED ${CMAKE_CURRENT_SOURCE_DIR}/SRC/solver/AMGXSolver.cpp)
 target_include_directories(solver PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/SRC/solver)
-
-# Link AMGX to solver
 target_link_libraries(solver PRIVATE ${AMGX_LIBRARY_DIR}/libamgxsh.so)
 
-# Add tests executable
+# Create tests executable
 add_executable(test_solver ${CMAKE_CURRENT_SOURCE_DIR}/SRC/tests/test_solver.cpp)
-
-# Ensure test_solver can find solver headers
 target_include_directories(test_solver PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/SRC/solver)
-
-# Link test_solver with solver
 target_link_libraries(test_solver PRIVATE solver)
+
+# Create Python interface for AMGXSolver
+pybind11_add_module(pyAMGXSolver ${CMAKE_CURRENT_SOURCE_DIR}/SRC/solver/pyAMGXSolver.cpp)
+target_link_libraries(pyAMGXSolver PRIVATE solver)
 
 # Print summary
 message(STATUS "AMGX found at: ${AMGX_ROOT_DIR}")
