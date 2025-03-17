@@ -1,12 +1,15 @@
 #include "AMGXSolver.h"
 
+std::ofstream AMGXSolver::_log_file_stream;
+bool AMGXSolver::_use_log_file = false;
+
 /* 
 Note from AMGX Reference:
 It is recommended that the host buffers passed to AMGX vector upload be pinned 
 previously via AMGX pin memory. This allows the underlying CUDA driver to 
 achieve higher data transfer rates across the PCI-Express bus.*/
 AMGXSolver::AMGXSolver(const char *config_file, bool use_cpu, const int *gpu_ids, 
-                        int num_gpus, bool pin_memory)
+                        int num_gpus, bool pin_memory, const char* log_file)
     : _use_cpu(use_cpu), _pin_memory(pin_memory)
 {
     if (config_file == nullptr) {
@@ -23,7 +26,7 @@ AMGXSolver::AMGXSolver(const char *config_file, bool use_cpu, const int *gpu_ids
 
     if (_use_cpu && gpu_ids != nullptr)
     {
-        std::cout << "Cannot specify both CPU mode and GPU IDs." 
+        std::cout << "Cannot specify both CPU mode and GPU IDs. " 
                   << "GPU IDs will be ignored.\n";
     }
 
@@ -39,34 +42,34 @@ AMGXSolver::AMGXSolver(const char *config_file, bool use_cpu, const int *gpu_ids
     }
 
     /* Initialize AMGX library with user-defined error handling*/
-    AMGX_SAFE_CALL(AMGX_initialize());
-    //AMGX_SAFE_CALL(AMGX_initialize_plugins()); // deprecated
-    AMGX_SAFE_CALL(AMGX_register_print_callback(&AMGXSolver::callback));
-    AMGX_SAFE_CALL(AMGX_install_signal_handler());
+    CHECK_AMGX_CALL(AMGX_initialize());
+    //CHECK_AMGX_CALL(AMGX_initialize_plugins()); // deprecated
+    CHECK_AMGX_CALL(AMGX_register_print_callback(&AMGXSolver::callback));
+    CHECK_AMGX_CALL(AMGX_install_signal_handler());
 
     /* AMGX configuration file*/
-    AMGX_SAFE_CALL(AMGX_config_create_from_file(&_config, config_file));
+    CHECK_AMGX_CALL(AMGX_config_create_from_file(&_config, config_file));
 
     /* AMGX mode and resources*/
     if (_use_cpu)
     {
         _mode = AMGX_mode_hDDI;
-        AMGX_SAFE_CALL(AMGX_resources_create_simple(&_resources, _config));
+        CHECK_AMGX_CALL(AMGX_resources_create_simple(&_resources, _config));
     }
     else
     {
         _mode = AMGX_mode_dDDI;
-        AMGX_SAFE_CALL(AMGX_resources_create(&_resources, _config, NULL, num_gpus, 
+        CHECK_AMGX_CALL(AMGX_resources_create(&_resources, _config, NULL, num_gpus, 
                                                 gpu_ids));
     }
 
     /* AMGX matrices and vectors */
-    AMGX_SAFE_CALL(AMGX_matrix_create(&_matrix, _resources, _mode));
-    AMGX_SAFE_CALL(AMGX_vector_create(&_rhs, _resources, _mode));
-    AMGX_SAFE_CALL(AMGX_vector_create(&_solution, _resources, _mode));
+    CHECK_AMGX_CALL(AMGX_matrix_create(&_matrix, _resources, _mode));
+    CHECK_AMGX_CALL(AMGX_vector_create(&_rhs, _resources, _mode));
+    CHECK_AMGX_CALL(AMGX_vector_create(&_solution, _resources, _mode));
 
     /* AMGX solver*/
-    AMGX_SAFE_CALL(AMGX_solver_create(&_solver, _resources, _mode, _config));
+    CHECK_AMGX_CALL(AMGX_solver_create(&_solver, _resources, _mode, _config));
 }
 
 AMGXSolver::~AMGXSolver()
@@ -105,18 +108,18 @@ void AMGXSolver::initializeMatrix(int num_rows, const int *row_ptr,
     this->_num_non_zeros = row_ptr[num_rows];
 
     if (!_use_cpu && _pin_memory) {
-        AMGX_SAFE_CALL(AMGX_pin_memory((void*)row_ptr, sizeof(int) * (_num_rows + 1)));
-        AMGX_SAFE_CALL(AMGX_pin_memory((void*)col_indices, sizeof(int) * _num_non_zeros));
-        AMGX_SAFE_CALL(AMGX_pin_memory((void*)values, sizeof(double) * _num_non_zeros));
+        CHECK_AMGX_CALL(AMGX_pin_memory((void*)row_ptr, sizeof(int) * (_num_rows + 1)));
+        CHECK_AMGX_CALL(AMGX_pin_memory((void*)col_indices, sizeof(int) * _num_non_zeros));
+        CHECK_AMGX_CALL(AMGX_pin_memory((void*)values, sizeof(double) * _num_non_zeros));
     }
-    AMGX_SAFE_CALL(AMGX_matrix_upload_all(_matrix, _num_rows, _num_non_zeros, 1, 1, 
+    CHECK_AMGX_CALL(AMGX_matrix_upload_all(_matrix, _num_rows, _num_non_zeros, 1, 1, 
                                         row_ptr, col_indices, values, nullptr));
     if (!_use_cpu && _pin_memory) {
-        AMGX_SAFE_CALL(AMGX_unpin_memory((void*)row_ptr));
-        AMGX_SAFE_CALL(AMGX_unpin_memory((void*)col_indices));
-        AMGX_SAFE_CALL(AMGX_unpin_memory((void*)values));
+        CHECK_AMGX_CALL(AMGX_unpin_memory((void*)row_ptr));
+        CHECK_AMGX_CALL(AMGX_unpin_memory((void*)col_indices));
+        CHECK_AMGX_CALL(AMGX_unpin_memory((void*)values));
     }
-    AMGX_SAFE_CALL(AMGX_solver_setup(_solver, _matrix));
+    CHECK_AMGX_CALL(AMGX_solver_setup(_solver, _matrix));
 }
 
 void AMGXSolver::replaceCoefficients(int num_rows, int num_non_zeros, 
@@ -140,14 +143,14 @@ void AMGXSolver::replaceCoefficients(int num_rows, int num_non_zeros,
     }
     
     if (!_use_cpu && _pin_memory) {
-        AMGX_SAFE_CALL(AMGX_pin_memory((void*)values, sizeof(double) * _num_non_zeros));
+        CHECK_AMGX_CALL(AMGX_pin_memory((void*)values, sizeof(double) * _num_non_zeros));
     }
-    AMGX_SAFE_CALL(AMGX_matrix_replace_coefficients(_matrix, _num_rows, 
+    CHECK_AMGX_CALL(AMGX_matrix_replace_coefficients(_matrix, _num_rows, 
                                             _num_non_zeros, values, nullptr));
     if (!_use_cpu && _pin_memory) {
-        AMGX_SAFE_CALL(AMGX_unpin_memory((void*)values));
+        CHECK_AMGX_CALL(AMGX_unpin_memory((void*)values));
     }
-    AMGX_SAFE_CALL(AMGX_solver_setup(_solver, _matrix));
+    CHECK_AMGX_CALL(AMGX_solver_setup(_solver, _matrix));
 }
 
 int AMGXSolver::solve(void) 
@@ -170,24 +173,24 @@ int AMGXSolver::solve(double* x, const double* b, int num_rows)
     }
 
     if (!_use_cpu && _pin_memory) {
-        AMGX_SAFE_CALL(AMGX_pin_memory((void*)b, sizeof(double) * num_rows));
-        AMGX_SAFE_CALL(AMGX_pin_memory((void*)x, sizeof(double) * num_rows));
+        CHECK_AMGX_CALL(AMGX_pin_memory((void*)b, sizeof(double) * num_rows));
+        CHECK_AMGX_CALL(AMGX_pin_memory((void*)x, sizeof(double) * num_rows));
     }
-    AMGX_SAFE_CALL(AMGX_vector_upload(_rhs, num_rows, 1, b));
+    CHECK_AMGX_CALL(AMGX_vector_upload(_rhs, num_rows, 1, b));
     
-    AMGX_SAFE_CALL(AMGX_vector_set_zero(_solution, num_rows, 1));
+    CHECK_AMGX_CALL(AMGX_vector_set_zero(_solution, num_rows, 1));
     // slight optimization to tell it to start with solution being all zeros
-    AMGX_SAFE_CALL(AMGX_solver_solve_with_0_initial_guess(_solver, _rhs, _solution));
+    CHECK_AMGX_CALL(AMGX_solver_solve_with_0_initial_guess(_solver, _rhs, _solution));
     
     
-    AMGX_SAFE_CALL(AMGX_vector_download(_solution, x));
+    CHECK_AMGX_CALL(AMGX_vector_download(_solution, x));
     if (!_use_cpu && _pin_memory) {
-        AMGX_SAFE_CALL(AMGX_unpin_memory((void*)x));
-        AMGX_SAFE_CALL(AMGX_unpin_memory((void*)b));
+        CHECK_AMGX_CALL(AMGX_unpin_memory((void*)x));
+        CHECK_AMGX_CALL(AMGX_unpin_memory((void*)b));
     }
     /* AMGX check status */
     AMGX_SOLVE_STATUS status;
-    AMGX_SAFE_CALL(AMGX_solver_get_status(_solver, &status));
+    CHECK_AMGX_CALL(AMGX_solver_get_status(_solver, &status));
 
     switch (status) {
         case AMGX_SOLVE_SUCCESS:

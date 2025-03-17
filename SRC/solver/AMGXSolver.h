@@ -6,6 +6,22 @@
 #include <iostream>
 #include <fstream>
 
+// Macro to handle AMGX function calls and throw exceptions on errors
+#define CHECK_AMGX_CALL(rc) \
+{ \
+  AMGX_RC err;     \
+  char msg[4096];   \
+  switch(err = (rc)) {    \
+  case AMGX_RC_OK: \
+    break; \
+  default: \
+    AMGX_get_error_string(err, msg, 4096); \
+    fprintf(stderr, "AMGX ERROR: file %s line %6d\n", __FILE__, __LINE__); \
+    fprintf(stderr, "AMGX ERROR: %s\n", msg); \
+    throw std::runtime_error(std::string("AMGX ERROR: ") + msg); \
+  } \
+}
+
 class AMGXSolver
 {
 public:
@@ -23,7 +39,7 @@ public:
 private:
     static void callback(const char* msg, int length);
     static std::ofstream _log_file_stream;
-    static bool _use_log_file = false;
+    static bool _use_log_file;
 
     AMGX_config_handle    _config       = nullptr;
     AMGX_resources_handle _resources    = nullptr;
