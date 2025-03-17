@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <cstring> // For strlen, strcpy
 
-#include "solver/AMGXSolver.h"
+#include "../solver/AMGXSolver.h"
 
 // Assuming a maximum line length for Matrix Market files
 #define MAX_LINE_LENGTH 256
@@ -67,13 +67,14 @@ double calculateResidualNorm(double* r, int size) {
 }
 
 int main(int argc, char* argv[]) {
-    if (argc != 2) {
-        std::cerr << "Usage: " << argv[0] << " <matrix_market_file>" << std::endl;
+    if (argc != 3) {
+        std::cerr << "Usage: " << argv[0] << " <matrix_market_file> <amgx_config_file>" << std::endl;
         return 1;
     }
 
     try {
-        MatrixData matrixData = readMatrixMarket(argv[1]);
+        char* matrix_market_file = argv[1];
+        MatrixData matrixData = readMatrixMarket(matrix_market_file);
         double* rhs = new double[matrixData.rows];
         double* solution = new double[matrixData.rows];
         double* residual = new double[matrixData.rows];
@@ -86,7 +87,9 @@ int main(int argc, char* argv[]) {
             rhs[i] = 1.0;
         }
 
-        AMGXSolver solver("your_config.json", false, nullptr, 0, true);
+        char* amgx_config_file = argv[2];
+        int gpu_ids[] = {0};  // Create an array
+        AMGXSolver solver(amgx_config_file, false, gpu_ids, 1, false);
         solver.initializeMatrix(matrixData.rows, matrixData.rowPtr, matrixData.colIndices, matrixData.values);
         int solveStatus = solver.solve(solution, rhs, matrixData.rows);
 

@@ -4,12 +4,13 @@
 #include <amgx_c.h>
 #include <stdexcept>
 #include <iostream>
+#include <fstream>
 
 class AMGXSolver
 {
 public:
-    AMGXSolver(const char* config_file, bool use_cpu, const int* gpu_ids = nullptr,
-               int num_gpus = 0, bool pin_memory = true);
+    AMGXSolver(const char* config_file, bool use_cpu = false, const int* gpu_ids = nullptr,
+               int num_gpus = 0, bool pin_memory = true, const char* log_file = nullptr);
     ~AMGXSolver();
     
     void initializeMatrix(int num_rows, const int* row_ptr, const int* col_indices,
@@ -21,6 +22,8 @@ public:
 
 private:
     static void callback(const char* msg, int length);
+    static std::ofstream _log_file_stream;
+    static bool _use_log_file = false;
 
     AMGX_config_handle    _config       = nullptr;
     AMGX_resources_handle _resources    = nullptr;
@@ -32,5 +35,8 @@ private:
 
     bool _use_cpu;
     bool _pin_memory;
+    
+    int _num_rows = 0;
+    int _num_non_zeros = 0;
 };
 #endif

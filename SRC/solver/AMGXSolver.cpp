@@ -27,9 +27,20 @@ AMGXSolver::AMGXSolver(const char *config_file, bool use_cpu, const int *gpu_ids
                   << "GPU IDs will be ignored.\n";
     }
 
+    // Open log file if provided
+    if (log_file != nullptr) {
+        _log_file_stream.open(log_file, std::ios::out | std::ios::app);
+        if (!_log_file_stream.is_open()) {
+            throw std::runtime_error("Failed to open log file.");
+        }
+        _use_log_file = true;
+    } else {
+        _use_log_file = false;
+    }
+
     /* Initialize AMGX library with user-defined error handling*/
     AMGX_SAFE_CALL(AMGX_initialize());
-    AMGX_SAFE_CALL(AMGX_initialize_plugins());
+    //AMGX_SAFE_CALL(AMGX_initialize_plugins()); // deprecated
     AMGX_SAFE_CALL(AMGX_register_print_callback(&AMGXSolver::callback));
     AMGX_SAFE_CALL(AMGX_install_signal_handler());
 
@@ -66,8 +77,14 @@ AMGXSolver::~AMGXSolver()
     if (_matrix) AMGX_matrix_destroy(_matrix);
     if (_resources) AMGX_resources_destroy(_resources);
     if (_config) AMGX_config_destroy(_config);
-    AMGX_finalize_plugins();
+    //AMGX_finalize_plugins(); // deprecated
+    AMGX_reset_signal_handler();
     AMGX_finalize();
+    
+    // Close log file if opened
+    if (_use_log_file && _log_file_stream.is_open()) {
+        _log_file_stream.close();
+    }
 }
 
 void AMGXSolver::initializeMatrix(int num_rows, const int *row_ptr, 
@@ -80,17 +97,19 @@ void AMGXSolver::initializeMatrix(int num_rows, const int *row_ptr,
         throw std::invalid_argument("Matrix arrays cannot be null");
     }
     
-    int num_non_zeros = row_ptr[num_rows];
-    if (num_non_zeros <= 0) {
+    if (row_ptr[num_rows] <= 0) {
         throw std::invalid_argument("Number of non-zero elements must be positive");
     }
     
+    this->_num_rows = num_rows;
+    this->_num_non_zeros = row_ptr[num_rows];
+
     if (!_use_cpu && _pin_memory) {
-        AMGX_SAFE_CALL(AMGX_pin_memory((void*)row_ptr, sizeof(int) * num_non_zeros));
-        AMGX_SAFE_CALL(AMGX_pin_memory((void*)col_indices, sizeof(int) * num_non_zeros));
-        AMGX_SAFE_CALL(AMGX_pin_memory((void*)values, sizeof(double) * num_non_zeros));
+        AMGX_SAFE_CALL(AMGX_pin_memory((void*)row_ptr, sizeof(int) * (_num_rows + 1)));
+        AMGX_SAFE_CALL(AMGX_pin_memory((void*)col_indices, sizeof(int) * _num_non_zeros));
+        AMGX_SAFE_CALL(AMGX_pin_memory((void*)values, sizeof(double) * _num_non_zeros));
     }
-    AMGX_SAFE_CALL(AMGX_matrix_upload_all(_matrix, num_rows, num_non_zeros, 1, 1, 
+    AMGX_SAFE_CALL(AMGX_matrix_upload_all(_matrix, _num_rows, _num_non_zeros, 1, 1, 
                                         row_ptr, col_indices, values, nullptr));
     if (!_use_cpu && _pin_memory) {
         AMGX_SAFE_CALL(AMGX_unpin_memory((void*)row_ptr));
@@ -113,11 +132,18 @@ void AMGXSolver::replaceCoefficients(int num_rows, int num_non_zeros,
         throw std::invalid_argument("Values array cannot be null");
     }
     
-    if (!_use_cpu && _pin_memory) {
-        AMGX_SAFE_CALL(AMGX_pin_memory((void*)values, sizeof(double) * num_non_zeros));
+    if (num_rows != this->_num_rows) {
+        throw std::invalid_argument("Number of rows must match matrix size. Use AMGXSolver::initializeMatrix() method instead");
     }
-    AMGX_SAFE_CALL(AMGX_matrix_replace_coefficients(_matrix, num_rows, 
-                                            num_non_zeros, values, nullptr));
+    if (num_non_zeros != this->_num_non_zeros) {
+        throw std::invalid_argument("Number of rows must match matrix size. Use AMGXSolver::initializeMatrix() method instead");
+    }
+    
+    if (!_use_cpu && _pin_memory) {
+        AMGX_SAFE_CALL(AMGX_pin_memory((void*)values, sizeof(double) * _num_non_zeros));
+    }
+    AMGX_SAFE_CALL(AMGX_matrix_replace_coefficients(_matrix, _num_rows, 
+                                            _num_non_zeros, values, nullptr));
     if (!_use_cpu && _pin_memory) {
         AMGX_SAFE_CALL(AMGX_unpin_memory((void*)values));
     }
@@ -139,6 +165,10 @@ int AMGXSolver::solve(double* x, const double* b, int num_rows)
         throw std::invalid_argument("Solution and RHS vectors cannot be null");
     }
     
+    if (num_rows != this->_num_rows) {
+        throw std::invalid_argument("Number of rows must match matrix size");
+    }
+
     if (!_use_cpu && _pin_memory) {
         AMGX_SAFE_CALL(AMGX_pin_memory((void*)b, sizeof(double) * num_rows));
         AMGX_SAFE_CALL(AMGX_pin_memory((void*)x, sizeof(double) * num_rows));
@@ -177,5 +207,11 @@ int AMGXSolver::solve(double* x, const double* b, int num_rows)
 /* print callback (could be customized) */
 void AMGXSolver::callback(const char* msg, int length) 
 {
-    std::cerr << msg << "\n";
+    if (_use_log_file && _log_file_stream.is_open()) {
+        _log_file_stream.write(msg, length);
+        _log_file_stream << std::endl;
+    } else {
+        std::cout.write(msg, length);
+        std::cout << std::endl;
+    }
 }
