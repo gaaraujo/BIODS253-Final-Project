@@ -1,0 +1,14 @@
+{
+    "config_version": 2, 
+    "determinism_flag": 1,
+    "solver": {
+        "solver": "DENSE_LU_SOLVER", 
+        "print_solve_stats": 1, 
+        "obtain_timings": 1, 
+        "monitor_residual": 1, 
+        "store_res_history": 1,
+        "convergence": "ABSOLUTE", 
+        "tolerance": 1e-6, 
+        "norm": "L2"
+    }
+}

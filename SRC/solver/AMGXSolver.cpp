@@ -81,6 +81,10 @@ void AMGXSolver::initialize(const char *config_file, bool use_cpu, const int *gp
         }
         CHECK_AMGX_CALL(AMGX_config_create_from_file(&_config, config_file));
 
+        // This doesn't work and I can't figure out why
+        // **Override configuration parameters for residual tracking**
+        // CHECK_AMGX_CALL(AMGX_config_add_parameters(&_config, "monitor_residual=1, store_res_history=1"));
+
         /* Set AMGX mode and create resources */
         _use_cpu = use_cpu;
         _pin_memory = pin_memory;
@@ -287,6 +291,18 @@ int AMGXSolver::solve(double* x, const double* b, int num_rows)
             std::cerr << "[Error] AMGX solver returned an unknown status.\n";
             return -3;
     }
+}
+
+int AMGXSolver::getNumIterations(void) {
+    int n;
+    AMGX_solver_get_iterations_number(_solver, &n);
+    return n;
+}
+
+double AMGXSolver::getFinalResidual(void) {
+    double final_residual;
+    AMGX_solver_get_iteration_residual(_solver, this->getNumIterations(), 0, &final_residual);
+    return final_residual;
 }
 
 /* print callback (could be customized) */

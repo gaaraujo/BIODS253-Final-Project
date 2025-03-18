@@ -41,6 +41,9 @@ public:
     int solve(void);
     int solve(double* x, const double* b, int num_rows);
 
+    int getNumIterations(void);
+    double getFinalResidual(void);
+
 private:
     static void callback(const char* msg, int length);
     static std::ofstream _log_file_stream;

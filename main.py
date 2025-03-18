@@ -50,7 +50,7 @@ def run_test(matrix_path, config_file, use_cpu=False, pin_memory=True, k=11):
 
         elapsed_times = []
         amgx_times = []
-        iterations = []
+        amgx_iterations = []
         solver_statuses = []
 
         # **Clear the log file before each run**
@@ -65,7 +65,7 @@ def run_test(matrix_path, config_file, use_cpu=False, pin_memory=True, k=11):
         for i in range(k):
             # Solve Ax = b
             start_time = time.time()
-            x = solver.solve(b)
+            x, status, iterations, residual = solver.solve(b)
             end_time = time.time()
 
             # Compute and log performance metrics
@@ -73,16 +73,38 @@ def run_test(matrix_path, config_file, use_cpu=False, pin_memory=True, k=11):
             log_data = parse_amgx_log(log_file)
 
             solver_status = log_data.get("solver_status", None)
+            amgx_residual = log_data.get("final_residual", None)
             amgx_time = log_data.get("total_time", None)
-            iteration_count = log_data.get("total_iterations", None)
+            amgx_total_iter = log_data.get("total_iterations", None)
+
+            if (status != solver_status):
+                print("API ({status}) and log ({solver_status}) statuses don't match")
+            if (iterations != amgx_total_iter):
+                print("API ({iterations}) and log ({amgx_total_iter}) iterations don't match")
+            if ((residual - amgx_residual)/amgx_residual >= 1e-4):
+                print("API ({residual}) and log ({amgx_residual}) residual don't match")
 
             solver_statuses.append(solver_status)
 
+            # Compute actual residual norm ||b - Ax|| using SciPy
+            computed_residual = np.linalg.norm(b - A @ x, ord=2)
+
+            # Check residual from amgx is correct
+            tol = 1e-4
+            if amgx_residual is not None and computed_residual is not None:
+                relative_error = abs(computed_residual - amgx_residual) / (computed_residual + 1e-16)
+                if relative_error > tol:
+                    warning_msg = (f"[WARNING] Residual mismatch in {matrix_name} ({config_name}): "
+                                   f"AMGX={amgx_residual:.2e}, Computed={computed_residual:.2e}, "
+                                   f"Relative Error={relative_error:.2e}")
+                    print(warning_msg)
+
+            
             # Only keep results after the first run
             if i > 0:
                 elapsed_times.append(elapsed_time)
                 amgx_times.append(amgx_time)
-                iterations.append(iteration_count)
+                amgx_iterations.append(amgx_total_iter)
 
         # Clean up only once
         solver.cleanup()
@@ -90,11 +112,11 @@ def run_test(matrix_path, config_file, use_cpu=False, pin_memory=True, k=11):
         # Compute averages
         avg_elapsed_time = np.mean(elapsed_times) if elapsed_times else None
         avg_amgx_time = np.mean(amgx_times) if amgx_times else None
-        avg_iterations = np.mean(iterations) if iterations else None
+        avg_iterations = np.mean(amgx_iterations) if amgx_iterations else None
 
         solver_status = solver_statuses[-1]
         print(f"[RESULT] {matrix_name} ({config_name}): Num. Rows={num_rows}, Solver Status={solver_status}, "
-              f"Avg Residual={log_data.get('final_residual', None)}, Avg Iterations={avg_iterations}, "
+              f"Avg Residual={amgx_residual}, Avg Iterations={avg_iterations}, "
               f"Avg Elapsed Time={avg_elapsed_time:.6f} s, Avg AMGX Time={avg_amgx_time:.6f} s")
         
         print("---------------------------------------------")
@@ -138,7 +160,7 @@ def plot_results(results):
     # Dictionary to store results for plotting
     data = {}
 
-    for num_rows, elapsed_time, amgx_time, iterations, solver_status, config_name in results:
+    for num_rows, elapsed_time, amgx_time, amgx_iterations, solver_status, config_name in results:
 
         if config_name not in data:
             data[config_name] = {
@@ -150,11 +172,11 @@ def plot_results(results):
             data[config_name]["sizes"].append(num_rows)
             data[config_name]["elapsed_times"].append(elapsed_time)
             data[config_name]["amgx_times"].append(amgx_time)
-            data[config_name]["iterations"].append(iterations)
+            data[config_name]["iterations"].append(amgx_iterations)
         else:
             data[config_name]["failed_sizes"].append(num_rows)
             data[config_name]["failed_amgx_times"].append(amgx_time)
-            data[config_name]["failed_iterations"].append(iterations)
+            data[config_name]["failed_iterations"].append(amgx_iterations)
 
     # Plot AMGX time vs matrix size
     plt.figure(figsize=(10, 6))
