@@ -1,15 +1,17 @@
 #include "AMGXSolver.h"
 
+// Static member initialization
 std::ofstream AMGXSolver::_log_file_stream;
 bool AMGXSolver::_use_log_file = false;
 bool AMGXSolver::_amgx_initialized = false;
-int AMGXSolver::_active_solver_instances = 0; // Track active instances
+int AMGXSolver::_active_solver_instances = 0; // Track active instances for proper AMGX lifecycle management
 
-/* 
-Note from AMGX Reference:
-It is recommended that the host buffers passed to AMGX vector upload be pinned 
-previously via AMGX pin memory. This allows the underlying CUDA driver to 
-achieve higher data transfer rates across the PCI-Express bus.*/
+/**
+ * Implementation note: AMGX performance optimization
+ * It is recommended that host buffers passed to AMGX vector upload be pinned 
+ * via AMGX_pin_memory. This allows the underlying CUDA driver to achieve higher 
+ * data transfer rates across the PCI-Express bus.
+ */
 
 AMGXSolver::AMGXSolver(const char *config_file, bool use_cpu, const int *gpu_ids, 
                         int num_gpus, bool pin_memory, const char* log_file)
@@ -66,7 +68,7 @@ void AMGXSolver::initialize(const char *config_file, bool use_cpu, const int *gp
             _use_log_file = false;
         }
 
-        /* Initialize AMGX library */
+        /* Initialize AMGX library - only done once across all instances */
         if (!_amgx_initialized) {
             CHECK_AMGX_CALL(AMGX_initialize());
             CHECK_AMGX_CALL(AMGX_register_print_callback(&AMGXSolver::callback));
@@ -81,12 +83,17 @@ void AMGXSolver::initialize(const char *config_file, bool use_cpu, const int *gp
         }
         CHECK_AMGX_CALL(AMGX_config_create_from_file(&_config, config_file));
 
-        // **Override configuration parameters for residual tracking**
-        CHECK_AMGX_CALL(AMGX_config_add_parameters(&_config, "config_version=2, main:monitor_residual=1, main:store_res_history=1"));
-        // This doesn't work and I can't figure out why
-        CHECK_AMGX_CALL(AMGX_config_add_parameters(&_config, "config_version=2, monitor_residual=1, store_res_history=1"));  // In case "main" does not exist
+        /**
+         * Implementation note: Residual tracking configuration
+         * These parameters are required for the Python wrapper to function correctly.
+         * They enable residual monitoring and history storage, which are needed for
+         * convergence checking and performance analysis.
+         * Implementation below assumes the 'main' scope is defined.
+         */
+        CHECK_AMGX_CALL(AMGX_config_add_parameters(&_config, 
+            "config_version=2, main:monitor_residual=1, main:store_res_history=1"));
 
-        /* Set AMGX mode and create resources */
+        /* Mode selection based on CPU/GPU configuration */
         _use_cpu = use_cpu;
         _pin_memory = pin_memory;
         if (_resources != nullptr) {
@@ -94,10 +101,10 @@ void AMGXSolver::initialize(const char *config_file, bool use_cpu, const int *gp
             _resources = nullptr;
         }
         if (_use_cpu) {
-            _mode = AMGX_mode_hDDI;
+            _mode = AMGX_mode_hDDI;  // Host (CPU) mode
             CHECK_AMGX_CALL(AMGX_resources_create_simple(&_resources, _config));
         } else {
-            _mode = AMGX_mode_dDDI;
+            _mode = AMGX_mode_dDDI;  // Device (GPU) mode
             CHECK_AMGX_CALL(AMGX_resources_create(&_resources, _config, nullptr, num_gpus, gpu_ids));
         }
 
@@ -238,6 +245,12 @@ int AMGXSolver::solve(void)
     return -1; // not implemented
 }
 
+/**
+ * Implementation note: Memory management in solve method
+ * The solve method uses AMGX_solver_solve_with_0_initial_guess instead of
+ * AMGX_solver_solve for better performance when the initial guess is zero.
+ * This avoids unnecessary memory operations.
+ */
 int AMGXSolver::solve(double* x, const double* b, int num_rows) 
 {
     if (this->_num_non_zeros <= 0 || this->_num_rows <= 0) {
@@ -255,16 +268,19 @@ int AMGXSolver::solve(double* x, const double* b, int num_rows)
         throw std::invalid_argument("Number of rows must match matrix size");
     }
 
+    // Pin memory for GPU transfers if needed
     if (!_use_cpu && _pin_memory) {
         CHECK_AMGX_CALL(AMGX_pin_memory((void*)b, sizeof(double) * num_rows));
         CHECK_AMGX_CALL(AMGX_pin_memory((void*)x, sizeof(double) * num_rows));
     }
+
+    // Upload RHS vector
     CHECK_AMGX_CALL(AMGX_vector_upload(_rhs, num_rows, 1, b));
     
+    // Initialize solution vector to zero
     CHECK_AMGX_CALL(AMGX_vector_set_zero(_solution, num_rows, 1));
-    // slight optimization to tell it to start with solution being all zeros
+    // Use specialized solver call for zero initial guess
     CHECK_AMGX_CALL(AMGX_solver_solve_with_0_initial_guess(_solver, _rhs, _solution));
-    
     
     CHECK_AMGX_CALL(AMGX_vector_download(_solution, x));
     if (!_use_cpu && _pin_memory) {
@@ -306,7 +322,12 @@ double AMGXSolver::getFinalResidual(void) {
     return final_residual;
 }
 
-/* print callback (could be customized) */
+/**
+ * Implementation note: Logging mechanism
+ * The callback function is registered with AMGX and handles all solver output.
+ * When a log file is specified, output is redirected to the file; otherwise,
+ * it goes to stdout. This allows for flexible output handling and log analysis.
+ */
 void AMGXSolver::callback(const char* msg, int length) 
 {
     if (_use_log_file && _log_file_stream.is_open()) {

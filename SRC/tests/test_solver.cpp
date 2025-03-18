@@ -1,3 +1,14 @@
+/**
+ * @file test_solver.cpp
+ * @brief Comprehensive test suite for AMGXSolver
+ *
+ * This file implements a test suite for the AMGXSolver class, including:
+ * - Functional tests with different matrix sizes
+ * - Exception handling tests
+ * - Various configuration combinations (CPU/GPU, memory pinning, logging)
+ * - Validation of solver results against direct matrix-vector multiplication
+ */
+
 #include <cstdio>
 #include <iostream>
 #include <fstream>
@@ -7,6 +18,9 @@
 #include <stdexcept>
 #include "../solver/AMGXSolver.h"
 
+/**
+ * @brief Structure to hold CSR matrix data
+ */
 struct MatrixData {
     int rows;
     int cols;
@@ -16,9 +30,21 @@ struct MatrixData {
     double* values;
 };
 
-constexpr double DEFAULT_TOLERANCE = 1e-6;
+constexpr double DEFAULT_TOLERANCE = 1e-6;  // Convergence tolerance for solver
 
-// Create a temporary config file if none is provided
+/**
+ * @brief Creates a default AMGX configuration file
+ * 
+ * Generates a JSON configuration file with standard settings for testing:
+ * - Block Jacobi preconditioner
+ * - PCG solver
+ * - Residual monitoring enabled
+ * - Maximum 20 iterations
+ * 
+ * @param tolerance Convergence tolerance (default: 1e-6)
+ * @return Path to created configuration file
+ * @throws std::runtime_error if file creation fails
+ */
 std::string createDefaultConfigFile(double tolerance = DEFAULT_TOLERANCE) {
     std::string filename = "default_amgx_config.json";
     std::ofstream configFile(filename);
@@ -56,8 +82,11 @@ std::string createDefaultConfigFile(double tolerance = DEFAULT_TOLERANCE) {
     return filename;
 }
 
-
-// CSR matrix-vector multiplication: Ax = mat * x
+/**
+ * @brief Performs matrix-vector multiplication y = Ax in CSR format
+ * 
+ * Used to validate solver results by computing the residual directly.
+ */
 void multiplyCSR(const MatrixData& mat, const double* x, double* Ax) {
     for (int i = 0; i < mat.rows; ++i) {
         Ax[i] = 0.0;
@@ -67,7 +96,13 @@ void multiplyCSR(const MatrixData& mat, const double* x, double* Ax) {
     }
 }
 
-// Compute residual norm ||r||_2 = sqrt(sum r_i^2)
+/**
+ * @brief Computes L2 norm of a vector
+ * 
+ * @param r Vector to compute norm for
+ * @param size Length of vector
+ * @return L2 norm sqrt(sum(r_i^2))
+ */
 double calculateResidualNorm(double* r, int size) {
     double norm = 0.0;
     for (int i = 0; i < size; ++i) {
@@ -76,7 +111,17 @@ double calculateResidualNorm(double* r, int size) {
     return std::sqrt(norm);
 }
 
-// Function to create different test matrices
+/**
+ * @brief Creates a tridiagonal test matrix
+ * 
+ * Generates a symmetric positive definite matrix in CSR format:
+ * - Diagonal elements = 2.0
+ * - Off-diagonal elements = -1.0
+ * - Pattern: tridiagonal (-1, 2, -1)
+ * 
+ * @param size Dimension of the square matrix
+ * @return MatrixData structure containing the CSR matrix
+ */
 MatrixData createTestMatrix(int size) {
     MatrixData data;
     data.rows = size;
@@ -108,14 +153,30 @@ MatrixData createTestMatrix(int size) {
     return data;
 }
 
-// Global counters for passed/failed tests
+// Global test counters
 int passedTests = 0;
 int failedTests = 0;
 int passedExceptionTests = 0;
 int failedExceptionTests = 0;
 
-// Runs a test on a given matrix size
-void runTest(int size, const char* amgx_config_file, bool use_cpu = false, bool pin_memory = true, const char* log_file = nullptr) {
+/**
+ * @brief Runs solver test with specific configuration
+ * 
+ * Test workflow:
+ * 1. Creates tridiagonal test matrix
+ * 2. Solves system Ax = b with b = [1,1,...,1]
+ * 3. Validates solution by computing residual
+ * 4. Verifies log file creation if logging enabled
+ * 
+ * @param size Matrix dimension
+ * @param amgx_config_file Path to AMGX configuration file
+ * @param use_cpu Whether to use CPU instead of GPU
+ * @param pin_memory Whether to use pinned memory
+ * @param log_file Path to log file (nullptr for no logging)
+ * @throws std::runtime_error on memory allocation failure
+ */
+void runTest(int size, const char* amgx_config_file, bool use_cpu = false, 
+             bool pin_memory = true, const char* log_file = nullptr) {
     std::cout << "\n[INFO] Running test with matrix size: " << size << "x" << size << std::endl;
 
     MatrixData matrixData = createTestMatrix(size);
@@ -191,7 +252,18 @@ void runTest(int size, const char* amgx_config_file, bool use_cpu = false, bool 
     delete[] residual;
 }
 
-// Tests expected exceptions with invalid inputs
+/**
+ * @brief Tests exception handling for invalid inputs
+ * 
+ * Tests various error conditions:
+ * 1. Invalid configuration file scenarios
+ * 2. Invalid matrix initialization parameters
+ * 3. Invalid solver usage patterns
+ * 4. Memory-related errors
+ * 
+ * Each test verifies that the appropriate exception is thrown
+ * and contains the expected error message.
+ */
 void testExpectedExceptions() {
     std::cout << "\n------------------------";
     std::cout << "\n[INFO] Testing exception handling..." << std::endl;
@@ -444,6 +516,21 @@ void testExpectedExceptions() {
     }
 }
 
+/**
+ * @brief Main test driver
+ * 
+ * Executes test suite with various combinations:
+ * - Matrix sizes: 5x5, 50x50, 200x200
+ * - CPU and GPU execution
+ * - With and without memory pinning
+ * - With and without logging
+ * 
+ * Also runs exception handling tests and reports overall results.
+ * 
+ * @param argc Command line argument count
+ * @param argv Command line arguments (optional: path to config file)
+ * @return 0 if all tests pass, -1 if any test fails
+ */
 int main(int argc, char* argv[]) {
     std::string configFile;
     if (argc >= 2) {

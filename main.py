@@ -14,7 +14,18 @@ from amgx_log_parser import parse_amgx_log  # Function to extract performance da
 import argparse
 
 def parse_arguments():
-    """Parse command-line arguments for directory paths."""
+    """Parse command-line arguments for directory paths.
+
+    Returns:
+        argparse.Namespace: Parsed command-line arguments containing:
+            - MATRIX_DIR: Directory containing matrix files (.mtx)
+            - LOG_DIR: Directory to store solver logs
+            - CONFIG_DIR: Directory containing solver config files (.json)
+            - PLOT_DIR: Directory to save plots
+            - TEMP_DIR: Temporary directory for downloads
+            - INPUT_CSV_FILE: CSV file containing matrix metadata
+            - OUTPUT_CSV_FILE: CSV file containing test results
+    """
     parser = argparse.ArgumentParser(description="Run AMGX solver tests on a set of matrices from the SuiteSparse data set with different AMGX configuration files.")
     
     parser.add_argument("-MATRIX_DIR", type=str, default="matrix_tests/matrices",
@@ -38,7 +49,18 @@ def parse_arguments():
 BASE_URL = "https://suitesparse-collection-website.herokuapp.com/MM"
 
 def download_and_extract(group, matrix_name):
-    """Download and extract a SuiteSparse matrix in .mtx format if it's missing."""
+    """Download and extract a SuiteSparse matrix in .mtx format if it's missing.
+
+    Downloads matrix from SuiteSparse collection, extracts it, and saves in the
+    specified matrix directory. Cleans up temporary files after extraction.
+
+    Args:
+        group (str): Matrix group name in SuiteSparse collection
+        matrix_name (str): Name of the matrix to download
+
+    Note:
+        Uses global TEMP_DIR and MATRIX_DIR for file operations
+    """
     file_url = f"{BASE_URL}/{group}/{matrix_name}.tar.gz"
     archive_path = os.path.join(TEMP_DIR, f"{matrix_name}.tar.gz")
     extract_path = os.path.join(TEMP_DIR, matrix_name)
@@ -74,7 +96,17 @@ def download_and_extract(group, matrix_name):
         print(f"[ERROR] Failed to process {matrix_name}: {e}")
 
 def load_matrix(mtx_file):
-    """Load a matrix in Matrix Market (.mtx) format and return as CSR format."""
+    """Load a matrix in Matrix Market (.mtx) format and return as CSR format.
+
+    Args:
+        mtx_file (str): Path to the .mtx file to load
+
+    Returns:
+        scipy.sparse.csr_matrix: Matrix in CSR format
+
+    Raises:
+        ValueError: If loaded matrix is not sparse
+    """
     print(f"[INFO] Loading matrix: {mtx_file}")
     
     A = scipy.io.mmread(mtx_file)  # Read matrix from file
@@ -85,10 +117,24 @@ def load_matrix(mtx_file):
     return A_csr
 
 def run_test(matrix_path, config_file, use_cpu=False, pin_memory=True, k=11):
-    """
-    Runs AMGX solver on a given matrix K times and averages the last (K-1) runs.
-    The first run is discarded to account for initial GPU warm-up effects.
-    If solver status is negative, do not repeat runs.
+    """Run AMGX solver tests on a given matrix with specified configuration.
+
+    Performs k solver runs, discarding the first run to account for GPU warm-up effects.
+    If solver fails (status < 0), only the first run is performed.
+
+    Args:
+        matrix_path (str): Path to the matrix file (.mtx)
+        config_file (str): Path to AMGX configuration file (.json)
+        use_cpu (bool, optional): Whether to use CPU instead of GPU. Defaults to False.
+        pin_memory (bool, optional): Whether to pin memory. Defaults to True.
+        k (int, optional): Number of runs to perform. Defaults to 11.
+
+    Returns:
+        tuple: Contains (num_rows, avg_elapsed_time, avg_amgx_time, avg_iterations, 
+               solver_status, config_name) if successful, None if failed
+
+    Note:
+        Uses global LOG_DIR for storing solver logs
     """
     matrix_name = os.path.basename(matrix_path).replace(".mtx", "")
     config_name = os.path.basename(config_file).replace(".json", "")
@@ -183,7 +229,22 @@ def run_test(matrix_path, config_file, use_cpu=False, pin_memory=True, k=11):
         return None
 
 def main():
-    """Main entry point: checks and downloads missing matrices, then runs tests."""
+    """Main entry point for the AMGX solver testing pipeline.
+
+    Workflow:
+    1. Parse command-line arguments for directory paths
+    2. Download missing matrices from SuiteSparse collection
+    3. Run solver tests with different configurations
+    4. Save results to CSV file
+    5. Generate performance plots
+
+    The script processes each matrix with all available configurations,
+    tracking solve time, iterations, and convergence status.
+
+    Usage:
+        Run 'python main.py --help' to see all available command-line arguments
+        and their default values.
+    """
     args = parse_arguments()
 
     global MATRIX_DIR, LOG_DIR, CONFIG_DIR, PLOT_DIR, TEMP_DIR, INPUT_CSV_FILE, OUTPUT_CSV_FILE
@@ -291,7 +352,22 @@ def main():
 
 
 def plot_results(results):
-    """Plots time and iterations against matrix sizes, marking failed solves with an 'X'."""
+    """Plot performance metrics against matrix sizes.
+
+    Creates two plots:
+    1. AMGX solve time vs matrix size
+    2. Number of iterations vs matrix size
+    
+    Successful solves are marked with dots/squares and connected by lines,
+    while failed solves are marked with 'X' markers.
+
+    Args:
+        results (list): List of tuples containing:
+            (num_rows, elapsed_time, amgx_time, amgx_iterations, solver_status, config_name)
+
+    Note:
+        Uses global PLOT_DIR to save generated plots
+    """
     import matplotlib.pyplot as plt
 
     # Dictionary to store results for plotting

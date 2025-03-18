@@ -1,3 +1,20 @@
+"""
+Test suite for pyAMGXSolver Python wrapper
+
+This module provides comprehensive testing of the pyAMGXSolver wrapper,
+including functional tests with different matrix sizes and configurations,
+as well as exception handling tests. It compares AMGX solutions against
+SciPy's sparse solver for validation.
+
+The test suite includes:
+- Matrix generation and solving with various sizes
+- CPU/GPU execution modes
+- Memory pinning options
+- Logging functionality
+- Exception handling for invalid inputs
+- Solution validation against SciPy reference
+"""
+
 import numpy as np
 import scipy.sparse as sp
 import scipy.sparse.linalg as spla
@@ -5,13 +22,25 @@ import pyAMGXSolver
 import os
 import json
 
-# Default tolerance and config file
+# Default solver parameters
 DEFAULT_TOLERANCE = 1e-6
 CONFIG_FILE = "config.json"
 
 def create_default_config_file(tolerance=DEFAULT_TOLERANCE):
-    """
-    Creates a default AMGX configuration file dynamically.
+    """Creates a default AMGX configuration file dynamically.
+    
+    Generates a JSON configuration file with standard solver settings:
+    - Block Jacobi preconditioner
+    - PCG solver
+    - Residual monitoring enabled
+    - Maximum 20 iterations
+    
+    Args:
+        tolerance (float): Convergence tolerance for the solver
+    
+    Note:
+        The configuration requires monitor_residual=1 and store_res_history=1
+        for proper functioning of the Python wrapper.
     """
     config_data = {
         "config_version": 2,
@@ -39,9 +68,21 @@ def create_default_config_file(tolerance=DEFAULT_TOLERANCE):
     print(f"[INFO] Created config file: {CONFIG_FILE} with tolerance {tolerance}")
 
 def create_test_matrix(size):
-    """
-    Creates a symmetric positive definite (SPD) tridiagonal matrix in CSR format.
-    Returns row_ptr, col_indices, values (CSR format), and a right-hand side vector b.
+    """Creates a symmetric positive definite (SPD) tridiagonal matrix in CSR format.
+    
+    Generates a test matrix with the pattern:
+    - Diagonal elements = 2.0
+    - Off-diagonal elements = -1.0
+    - Tridiagonal structure (-1, 2, -1)
+    
+    Args:
+        size (int): Dimension of the square matrix
+    
+    Returns:
+        tuple: (row_ptr, col_indices, values, b, A) where:
+            - row_ptr, col_indices, values: CSR format arrays
+            - b: Right-hand side vector (all ones)
+            - A: scipy.sparse matrix for reference computations
     """
     diagonals = [2.0 * np.ones(size), -1.0 * np.ones(size - 1), -1.0 * np.ones(size - 1)]
     offsets = [0, -1, 1]
@@ -58,9 +99,25 @@ def create_test_matrix(size):
     return row_ptr, col_indices, values, b, A
 
 def run_test(size, use_cpu=False, pin_memory=True, log_file=None):
-    """
-    Runs a test case for a given matrix size and configuration.
-    Solves Ax=b using pyAMGXSolver and compares with SciPy's solver.
+    """Runs a test case for a given matrix size and configuration.
+    
+    Workflow:
+    1. Generates test matrix and RHS vector
+    2. Solves system using AMGX
+    3. Solves system using SciPy for reference
+    4. Compares solutions and residuals
+    
+    Args:
+        size (int): Matrix dimension
+        use_cpu (bool): Whether to use CPU instead of GPU
+        pin_memory (bool): Whether to use pinned memory
+        log_file (str): Path to log file (None for no logging)
+    
+    Returns:
+        bool: True if test passed (residual < tolerance), False otherwise
+    
+    Note:
+        Explicitly deletes solver instance to prevent memory leaks
     """
     print(f"\n[INFO] Running test with matrix size: {size}x{size}, use_cpu={use_cpu}, pin_memory={pin_memory}, log_file={log_file}")
 
@@ -99,8 +156,23 @@ def run_test(size, use_cpu=False, pin_memory=True, log_file=None):
         return False
 
 def test_expected_exceptions():
-    """
-    Runs tests to check that expected exceptions are raised for invalid inputs.
+    """Tests exception handling for invalid inputs.
+    
+    Tests various error conditions:
+    1. Configuration file errors
+        - Empty/null file path
+    2. GPU configuration errors
+        - Missing GPU IDs
+    3. Matrix initialization errors
+        - Null/invalid arrays
+        - Mismatched dimensions
+    4. Solver usage errors
+        - Operations before initialization
+        - Invalid input arrays
+    
+    Note:
+        Explicitly cleans up solver instances to prevent memory leaks
+        Each test verifies both the exception occurrence and its message
     """
     print("\n---------------------------------")
     print("[INFO] Running expected exception tests...")
@@ -235,8 +307,24 @@ def test_expected_exceptions():
     print("=====================================")
 
 def main():
-    """
-    Runs tests for different matrix sizes and configurations.
+    """Main test driver function.
+    
+    Test matrix:
+    - Sizes: 5x5 (small), 50x50 (medium), 200x200 (large)
+    - Configurations:
+        * CPU and GPU execution
+        * With and without memory pinning
+        * With and without logging
+    
+    Workflow:
+    1. Creates configuration file
+    2. Runs solver tests with all combinations
+    3. Runs exception handling tests
+    4. Cleans up temporary files
+    5. Reports test results
+    
+    Returns:
+        int: 0 if all tests pass, 1 if any test fails
     """
     create_default_config_file()
 
