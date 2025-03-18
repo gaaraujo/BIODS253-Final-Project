@@ -34,6 +34,9 @@ def run_test(matrix_path, config_file, use_cpu=False, pin_memory=True):
     config_name = os.path.basename(config_file).replace(".json", "")
     log_file = os.path.join(LOG_DIR, f"{matrix_name}_{config_name}.log")
 
+    # **Clear the log file before running**
+    open(log_file, "w").close()
+    
     try:
         A = load_matrix(matrix_path)  # Load the sparse matrix
         num_rows = A.shape[0]

@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <iostream>
 #include <fstream>
+#include <cstring>
 
 // Macro to handle AMGX function calls and throw exceptions on errors
 #define CHECK_AMGX_CALL(rc) \

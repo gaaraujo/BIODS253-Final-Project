@@ -269,7 +269,11 @@ int AMGXSolver::solve(double* x, const double* b, int num_rows)
     /* AMGX check status */
     AMGX_SOLVE_STATUS status;
     CHECK_AMGX_CALL(AMGX_solver_get_status(_solver, &status));
-
+    
+    char status_message[50]; 
+    snprintf(status_message, sizeof(status_message), "Solver Status: %d\n", -status);
+    callback(status_message, strlen(status_message));
+    
     switch (status) {
         case AMGX_SOLVE_SUCCESS:
             return 0;

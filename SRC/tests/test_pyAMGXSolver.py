@@ -71,7 +71,7 @@ def run_test(size, use_cpu=False, pin_memory=True, log_file=None):
     solver.initialize_matrix(row_ptr, col_indices, values)
 
     # Solve using AMGX
-    x_amgx = solver.solve(b)
+    x_amgx, status = solver.solve(b)
 
     del solver # to avoid memory leaks
 

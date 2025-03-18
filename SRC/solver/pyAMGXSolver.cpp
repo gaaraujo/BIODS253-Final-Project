@@ -104,7 +104,7 @@ public:
         }
     }
 
-    py::array_t<double> solve(py::object b_obj) {
+    std::pair<py::array_t<double>, int> solve(py::object b_obj) {
         if (!solver) {
             throw std::runtime_error("Solver is not initialized.");
         }
@@ -130,15 +130,16 @@ public:
         // Allocate output array
         py::array_t<double> x(b.size());
 
+        int solve_status = -3;
         try {
-            solver->solve(x.mutable_data(), b.data(), b.size());
+            solve_status = solver->solve(x.mutable_data(), b.data(), b.size());
         } catch (const std::exception& e) {
             std::cerr << "[ERROR] Exception in solve: " << e.what() << std::endl;
             cleanup();  // Ensure proper cleanup if error occurs
             throw;
         }
 
-        return x;
+        return std::make_pair(x, solve_status);
     }
 
 
