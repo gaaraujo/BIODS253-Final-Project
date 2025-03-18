@@ -1,0 +1,5 @@
+matrix_tests/matrices/*
+matrix_tests/logs/*
+matrix_tests/temp/*
+amgx_venv/
+build/
