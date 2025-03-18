@@ -1,0 +1,29 @@
+Name,Group,Kind,NumRows,NumNonzeros,Date,Author,Rank,ConditionNumber
+bcsstk01,HB,Structural,48,400,1982,J. Lewis,48,8.82E+05
+bcsstk02,HB,Structural,66,4356,1982,J. Lewis,66,4.32E+03
+bcsstk03,HB,Structural,112,640,1982,J. Lewis,112,6.79E+06
+bcsstk04,HB,Structural,132,3648,1982,J. Lewis,132,2.29E+06
+bcsstk06,HB,Structural,420,7860,1982,J. Lewis,420,7.57E+06
+bcsstk08,HB,Structural,1074,12960,1982,J. Lewis,1074,2.60E+07
+bcsstk09,HB,Structural,1083,18437,1982,J. Lewis,1083,9.52E+03
+bcsstk10,HB,Structural,1086,22070,1982,J. Lewis,1086,5.24E+05
+bcsstk11,HB,Structural,1473,34241,1982,J. Lewis,1473,2.21E+08
+bcsstk13,HB,CFD,2003,83883,1982,J. Lewis,2003,1.10E+10
+bcsstk14,HB,Structural,1806,63454,1985,M. Will,1806,1.19E+10
+bcsstk15,HB,Structural,3948,117816,1985,M. Will,3948,6.54E+09
+bcsstk16,HB,Structural,4884,290378,1985,M. Will,4884,4.94E+09
+Kuu,MathWorks,Structural,7102,340200,2006,B. Cheng,7102,1.58E+04
+msc10848,Boeing,Structural,10848,1229776,1995,R. Grimes,10848,9.97E+09
+bcsstk17,HB,Structural,10974,428650,1985,M. Will,10974,1.30E+10
+smt,TKK,Structural,25710,3749582,2008,R. Kouhia,25710,1.59E+09
+thread,DNVS,Structural,29736,4444880,1999,C. Damhaug,29736,2.57E+10
+vanbody,GHS_psdef,Structural,47072,2329056,2004,S. Mayer,47072,--
+nasasrb,Nasa,Structural,54870,2667324,1995,NASA,54870,--
+crankseg_2,GHS_psdef,Structural,63838,14148858,2004,S. Mayer,63838,--
+s3dkq4m2,GHS_psdef,Structural,90449,4427725,1997,R. Kouhia,90449,--
+x104,DNVS,Structural,108384,8713602,1999,C. Damhaug,108384,---
+shipsec8,DNVS,Structural,114919,3303553,1999,C. Damhaug,114919,--
+pwtk,Boeing,Structural,217918,11524432,1995,R. Grimes,217918,--
+hood,GHS_psdef,Structural,220542,9895422,2004,J. Weiher,2020542,--
+inline_1,GHS_psdef,Structural,503712,36816170,2004,S. Mayer,503712,--
+Fault_639,Janna,Structural,638802,27245944,2011,"C. Janna, M. Ferronato",638802,--
