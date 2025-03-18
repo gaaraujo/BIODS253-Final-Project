@@ -267,6 +267,8 @@ def main():
     os.makedirs(LOG_DIR, exist_ok=True)
     os.makedirs(PLOT_DIR, exist_ok=True)
     os.makedirs(TEMP_DIR, exist_ok=True)
+    os.makedirs(MATRIX_DIR, exist_ok=True)
+
 
     df = pd.read_csv(INPUT_CSV_FILE)
     
