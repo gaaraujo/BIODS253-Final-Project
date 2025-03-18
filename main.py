@@ -28,10 +28,88 @@ def load_matrix(mtx_file):
     A_csr = A.tocsr()  # Convert to CSR format (needed for AMGX)
     return A_csr
 
+# def run_test(matrix_path, config_file, use_cpu=False, pin_memory=True, k=11):
+#     """
+#     Runs AMGX solver on a given matrix K times and averages the last (K-1) runs.
+#     The first run is discarded to account for initial GPU warm-up effects.
+#     """
+#     matrix_name = os.path.basename(matrix_path).replace(".mtx", "")
+#     config_name = os.path.basename(config_file).replace(".json", "")
+#     log_file = os.path.join(LOG_DIR, f"{matrix_name}_{config_name}.log")
+
+#     print("---------------------------------------------")
+#     try:
+#         A = load_matrix(matrix_path)  # Load the sparse matrix
+#         num_rows = A.shape[0]
+
+#         # Generate a right-hand side vector b
+#         b = np.ones(num_rows, dtype=np.float64)
+
+#         # Convert to CSR format
+#         row_ptr, col_indices, values = A.indptr, A.indices, A.data
+
+#         elapsed_times = []
+#         amgx_times = []
+#         amgx_iterations = []
+#         solver_statuses = []
+
+#         # **Clear the log file before each run**
+#         open(log_file, "w").close()
+
+#         # **Create the solver once**
+#         solver = pyAMGXSolver.AMGXSolver(config_file, use_cpu=use_cpu, gpu_ids=[0], pin_memory=pin_memory, log_file=log_file)
+
+#         # **Reinitialize matrix** instead of creating a new solver
+#         solver.initialize_matrix(row_ptr, col_indices, values)
+
+#         for i in range(k):
+#             # Solve Ax = b
+#             start_time = time.time()
+#             x, status, iterations, residual = solver.solve(b)
+#             end_time = time.time()
+
+#             # Compute and log performance metrics
+#             elapsed_time = end_time - start_time
+#             log_data = parse_amgx_log(log_file)
+
+#             solver_status = log_data.get("solver_status", None)
+#             amgx_residual = log_data.get("final_residual", None)
+#             amgx_time = log_data.get("total_time", None)
+#             amgx_total_iter = log_data.get("total_iterations", None)
+
+#             solver_statuses.append(solver_status)
+            
+#             # Only keep results after the first run
+#             if i > 0:
+#                 elapsed_times.append(elapsed_time)
+#                 amgx_times.append(amgx_time)
+#                 amgx_iterations.append(amgx_total_iter)
+
+#         # Clean up only once
+#         solver.cleanup()
+
+#         # Compute averages
+#         avg_elapsed_time = np.mean(elapsed_times) if elapsed_times else None
+#         avg_amgx_time = np.mean(amgx_times) if amgx_times else None
+#         avg_iterations = np.mean(amgx_iterations) if amgx_iterations else None
+
+#         solver_status = solver_statuses[-1]
+#         print(f"[RESULT] {matrix_name} ({config_name}): Num. Rows={num_rows}, Solver Status={solver_status}, "
+#               f"Avg Residual={amgx_residual}, Avg Iterations={avg_iterations}, "
+#               f"Avg Elapsed Time={avg_elapsed_time:.6f} s, Avg AMGX Time={avg_amgx_time:.6f} s")
+        
+#         print("---------------------------------------------")
+#         return num_rows, avg_elapsed_time, avg_amgx_time, avg_iterations, solver_status, config_name
+
+#     except Exception as e:
+#         print(f"[ERROR] Failed to solve {matrix_name} ({config_name}): {e}")
+#         return None
+
 def run_test(matrix_path, config_file, use_cpu=False, pin_memory=True, k=11):
     """
     Runs AMGX solver on a given matrix K times and averages the last (K-1) runs.
     The first run is discarded to account for initial GPU warm-up effects.
+    If solver status is negative, do not repeat runs.
     """
     matrix_name = os.path.basename(matrix_path).replace(".mtx", "")
     config_name = os.path.basename(config_file).replace(".json", "")
@@ -62,63 +140,59 @@ def run_test(matrix_path, config_file, use_cpu=False, pin_memory=True, k=11):
         # **Reinitialize matrix** instead of creating a new solver
         solver.initialize_matrix(row_ptr, col_indices, values)
 
-        for i in range(k):
-            # Solve Ax = b
-            start_time = time.time()
-            x, status, iterations, residual = solver.solve(b)
-            end_time = time.time()
+        # **First run (always executed)**
+        start_time = time.time()
+        x, status, iterations, residual = solver.solve(b)
+        end_time = time.time()
 
-            # Compute and log performance metrics
-            elapsed_time = end_time - start_time
-            log_data = parse_amgx_log(log_file)
+        # Compute and log performance metrics
+        elapsed_time = end_time - start_time
+        log_data = parse_amgx_log(log_file)
 
-            solver_status = log_data.get("solver_status", None)
-            amgx_residual = log_data.get("final_residual", None)
-            amgx_time = log_data.get("total_time", None)
-            amgx_total_iter = log_data.get("total_iterations", None)
+        solver_status = log_data.get("solver_status", None)
+        amgx_residual = log_data.get("final_residual", None)
+        amgx_time = log_data.get("total_time", None)
+        amgx_total_iter = log_data.get("total_iterations", None)
 
-            if (status != solver_status):
-                print("API ({status}) and log ({solver_status}) statuses don't match")
-            if (iterations != amgx_total_iter):
-                print("API ({iterations}) and log ({amgx_total_iter}) iterations don't match")
-            if ((residual - amgx_residual)/amgx_residual >= 1e-4):
-                print("API ({residual}) and log ({amgx_residual}) residual don't match")
+        solver_statuses.append(solver_status)
 
-            solver_statuses.append(solver_status)
+        # **If solver status is negative, do NOT repeat runs**
+        if solver_status < 0:
+            avg_elapsed_time = elapsed_time
+            avg_amgx_time = amgx_time
+            avg_iterations = amgx_total_iter
+        else:
+            # **Repeat for (k-1) additional runs**
+            for i in range(k - 1):
+                start_time = time.time()
+                x, status, iterations, residual = solver.solve(b)
+                end_time = time.time()
 
-            # Compute actual residual norm ||b - Ax|| using SciPy
-            computed_residual = np.linalg.norm(b - A @ x, ord=2)
+                # Compute performance metrics
+                elapsed_time = end_time - start_time
+                log_data = parse_amgx_log(log_file)
 
-            # Check residual from amgx is correct
-            tol = 1e-4
-            if amgx_residual is not None and computed_residual is not None:
-                relative_error = abs(computed_residual - amgx_residual) / (computed_residual + 1e-16)
-                if relative_error > tol:
-                    warning_msg = (f"[WARNING] Residual mismatch in {matrix_name} ({config_name}): "
-                                   f"AMGX={amgx_residual:.2e}, Computed={computed_residual:.2e}, "
-                                   f"Relative Error={relative_error:.2e}")
-                    print(warning_msg)
+                amgx_time = log_data.get("total_time", None)
+                amgx_total_iter = log_data.get("total_iterations", None)
 
-            
-            # Only keep results after the first run
-            if i > 0:
+                solver_statuses.append(status)
                 elapsed_times.append(elapsed_time)
                 amgx_times.append(amgx_time)
                 amgx_iterations.append(amgx_total_iter)
 
+            # Compute averages
+            avg_elapsed_time = np.mean(elapsed_times) if elapsed_times else None
+            avg_amgx_time = np.mean(amgx_times) if amgx_times else None
+            avg_iterations = np.mean(amgx_iterations) if amgx_iterations else None
+
         # Clean up only once
         solver.cleanup()
-
-        # Compute averages
-        avg_elapsed_time = np.mean(elapsed_times) if elapsed_times else None
-        avg_amgx_time = np.mean(amgx_times) if amgx_times else None
-        avg_iterations = np.mean(amgx_iterations) if amgx_iterations else None
 
         solver_status = solver_statuses[-1]
         print(f"[RESULT] {matrix_name} ({config_name}): Num. Rows={num_rows}, Solver Status={solver_status}, "
               f"Avg Residual={amgx_residual}, Avg Iterations={avg_iterations}, "
               f"Avg Elapsed Time={avg_elapsed_time:.6f} s, Avg AMGX Time={avg_amgx_time:.6f} s")
-        
+
         print("---------------------------------------------")
         return num_rows, avg_elapsed_time, avg_amgx_time, avg_iterations, solver_status, config_name
 

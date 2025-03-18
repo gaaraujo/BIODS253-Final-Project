@@ -81,9 +81,10 @@ void AMGXSolver::initialize(const char *config_file, bool use_cpu, const int *gp
         }
         CHECK_AMGX_CALL(AMGX_config_create_from_file(&_config, config_file));
 
-        // This doesn't work and I can't figure out why
         // **Override configuration parameters for residual tracking**
-        // CHECK_AMGX_CALL(AMGX_config_add_parameters(&_config, "monitor_residual=1, store_res_history=1"));
+        CHECK_AMGX_CALL(AMGX_config_add_parameters(&_config, "config_version=2, main:monitor_residual=1, main:store_res_history=1"));
+        // This doesn't work and I can't figure out why
+        CHECK_AMGX_CALL(AMGX_config_add_parameters(&_config, "config_version=2, monitor_residual=1, store_res_history=1"));  // In case "main" does not exist
 
         /* Set AMGX mode and create resources */
         _use_cpu = use_cpu;

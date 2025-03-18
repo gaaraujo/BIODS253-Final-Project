@@ -9,6 +9,7 @@
         "store_res_history": 1,
         "convergence": "ABSOLUTE", 
         "tolerance": 1e-6, 
-        "norm": "L2"
+        "norm": "L2",
+        "scope": "main"
     }
 }

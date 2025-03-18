@@ -64,5 +64,9 @@ private:
     
     int _num_rows = 0;
     int _num_non_zeros = 0;
+
+    std::string temp_config_file; // Path to the temporary config file
+    void createTemporaryConfigFile(const std::string &originalConfig);
+    void cleanupTemporaryFile();
 };
 #endif
