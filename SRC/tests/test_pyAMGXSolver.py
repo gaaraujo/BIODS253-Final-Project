@@ -25,7 +25,8 @@ def create_default_config_file(tolerance=DEFAULT_TOLERANCE):
             "print_solve_stats": 1,
             "obtain_timings": 1,
             "max_iters": 20,
-            "monitor_residual": 1,
+            "monitor_residual": 1, 
+            "store_res_history": 1,
             "scope": "main",
             "tolerance": tolerance,
             "norm": "L2"
@@ -71,7 +72,7 @@ def run_test(size, use_cpu=False, pin_memory=True, log_file=None):
     solver.initialize_matrix(row_ptr, col_indices, values)
 
     # Solve using AMGX
-    x_amgx, status = solver.solve(b)
+    x_amgx, status, iterations, residual = solver.solve(b)
 
     del solver # to avoid memory leaks
 
@@ -228,8 +229,10 @@ def test_expected_exceptions():
         print(f"[PASS] Caught expected exception: {e}")
         passed_exceptions += 1
 
-    print("\nException Tests Summary:")
+    print("=====================================")
+    print("Exception Tests Summary:")
     print(f"✅ Passed: {passed_exceptions}, ❌ Failed: {failed_exceptions}")
+    print("=====================================")
 
 def main():
     """

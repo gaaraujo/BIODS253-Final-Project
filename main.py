@@ -11,18 +11,28 @@ import pandas as pd
 import pyAMGXSolver
 from amgx_log_parser import parse_amgx_log  # Function to extract performance data
 
-# Directory paths
-MATRIX_DIR = "matrix_tests/matrices"
-LOG_DIR = "matrix_tests/logs"
-CONFIG_DIR = "matrix_tests/configs"
-PLOT_DIR = "matrix_tests/plots"
-TEMP_DIR = "matrix_tests/temp"
-CSV_FILE = "matrix_tests/matrices.csv"  # CSV with metadata of matrices
+import argparse
 
-# Ensure necessary directories exist
-os.makedirs(LOG_DIR, exist_ok=True)
-os.makedirs(PLOT_DIR, exist_ok=True)
-os.makedirs(TEMP_DIR, exist_ok=True)
+def parse_arguments():
+    """Parse command-line arguments for directory paths."""
+    parser = argparse.ArgumentParser(description="Run AMGX solver tests on a set of matrices from the SuiteSparse data set with different AMGX configuration files.")
+    
+    parser.add_argument("-MATRIX_DIR", type=str, default="matrix_tests/matrices",
+                        help="Directory containing matrix files (.mtx)")
+    parser.add_argument("-LOG_DIR", type=str, default="matrix_tests/logs",
+                        help="Directory to store solver logs")
+    parser.add_argument("-CONFIG_DIR", type=str, default="matrix_tests/configs",
+                        help="Directory containing solver config files (.json)")
+    parser.add_argument("-PLOT_DIR", type=str, default="matrix_tests/plots",
+                        help="Directory to save plots")
+    parser.add_argument("-TEMP_DIR", type=str, default="matrix_tests/temp",
+                        help="Temporary directory for downloads")
+    parser.add_argument("-INPUT_CSV_FILE", type=str, default="matrix_tests/matrices.csv",
+                        help="CSV file containing matrix metadata")
+    parser.add_argument("-OUTPUT_CSV_FILE", type=str, default="matrix_tests/plots/matrix_test_results.csv",
+                        help="CSV file containing timings, number of iterations, and convergence")
+
+    return parser.parse_args()
 
 # Base URL for downloading SuiteSparse matrices
 BASE_URL = "https://suitesparse-collection-website.herokuapp.com/MM"
@@ -174,7 +184,30 @@ def run_test(matrix_path, config_file, use_cpu=False, pin_memory=True, k=11):
 
 def main():
     """Main entry point: checks and downloads missing matrices, then runs tests."""
-    df = pd.read_csv(CSV_FILE)
+    args = parse_arguments()
+
+    global MATRIX_DIR, LOG_DIR, CONFIG_DIR, PLOT_DIR, TEMP_DIR, INPUT_CSV_FILE, OUTPUT_CSV_FILE
+    MATRIX_DIR, LOG_DIR, CONFIG_DIR, PLOT_DIR, TEMP_DIR, INPUT_CSV_FILE, OUTPUT_CSV_FILE = (
+        args.MATRIX_DIR, args.LOG_DIR, args.CONFIG_DIR, args.PLOT_DIR, args.TEMP_DIR, args.INPUT_CSV_FILE, args.OUTPUT_CSV_FILE
+    )
+
+    # Print out the paths being used
+    print("\n🔧 Using the following paths:")
+    print(f"   📂 MATRIX_DIR  : {MATRIX_DIR}")
+    print(f"   📂 LOG_DIR     : {LOG_DIR}")
+    print(f"   📂 CONFIG_DIR  : {CONFIG_DIR}")
+    print(f"   📂 PLOT_DIR    : {PLOT_DIR}")
+    print(f"   📂 TEMP_DIR    : {TEMP_DIR}")
+    print(f"   📄 INPUT_CSV_FILE    : {INPUT_CSV_FILE}")
+    print(f"   📄 OUTPUT_CSV_FILE    : {OUTPUT_CSV_FILE}\n")
+    
+
+    # Ensure necessary directories exist
+    os.makedirs(LOG_DIR, exist_ok=True)
+    os.makedirs(PLOT_DIR, exist_ok=True)
+    os.makedirs(TEMP_DIR, exist_ok=True)
+
+    df = pd.read_csv(INPUT_CSV_FILE)
     
     # Download missing matrices
     for _, row in df.iterrows():
@@ -192,82 +225,70 @@ def main():
         print("[ERROR] No Matrix Market (.mtx) files found.")
         return
     if not config_files:
-        print("[ERROR] No configuration files found in 'configs/'.")
+        print(f"[ERROR] No configuration files found in {CONFIG_DIR}.")
         return
 
     print(f"[INFO] Found {len(matrix_files)} matrices and {len(config_files)} config files. Running tests...\n")
 
     results = []
+    
+    # Dictionary to store results for CSV
+    results_dict = {col: [] for col in df.columns}  # Copy original metadata
+
+    # Add new columns for each config file
+    for config_file in config_files:
+        config_name = os.path.basename(config_file).replace(".json", "")
+        results_dict[f"SolveTime_{config_name}"] = []
+        results_dict[f"Iterations_{config_name}"] = []
+        results_dict[f"Success_{config_name}"] = []
+
+    # Iterate through matrices and test each with all configs
     for idx, matrix_file in enumerate(matrix_files, 1):
         matrix_path = os.path.join(MATRIX_DIR, matrix_file)
-        print(f"matrix {idx} / {len(matrix_files)}")
+        matrix_name = matrix_file.replace(".mtx", "")
+        
+        print(f"🔄 Processing matrix {idx} / {len(matrix_files)}: {matrix_name}")
+
+        # Find row in original CSV for this matrix
+        row_index = df[df["Name"] == matrix_name].index
+        if row_index.empty:
+            print(f"⚠️ Skipping {matrix_name}: Not found in CSV.")
+            continue
+
+        row_index = row_index[0]
+
+        # Store original metadata in results_dict
+        for col in df.columns:
+            results_dict[col].append(df.at[row_index, col])
+
         for config_file in config_files:
+            config_name = os.path.basename(config_file).replace(".json", "")
             result = run_test(matrix_path, config_file)
+            
             if result:
+                num_rows, avg_elapsed_time, avg_amgx_time, avg_iterations, solver_status, _ = result
                 results.append(result)
+
+                # Store results
+                results_dict[f"SolveTime_{config_name}"].append(avg_amgx_time)
+                results_dict[f"Iterations_{config_name}"].append(avg_iterations)
+                results_dict[f"Success_{config_name}"].append(1 if solver_status == 0 else 0)
+            else:
+                # Store NaN for failed tests
+                results_dict[f"SolveTime_{config_name}"].append(np.nan)
+                results_dict[f"Iterations_{config_name}"].append(np.nan)
+                results_dict[f"Success_{config_name}"].append(0)
+
+    # Convert dictionary to DataFrame and save
+    results_df = pd.DataFrame(results_dict)
+    results_csv_path = OUTPUT_CSV_FILE
+    results_df.to_csv(results_csv_path, index=False)
+
+    print(f"\n✅ Test results saved to {results_csv_path}")
 
     # Generate plots
     plot_results(results)
 
-
-# def plot_results(results):
-#     """Plots time and iterations against matrix sizes, marking failed solves with an 'X'."""
-#     import matplotlib.pyplot as plt
-
-#     # Dictionary to store results for plotting
-#     data = {}
-
-#     for num_rows, elapsed_time, amgx_time, amgx_iterations, solver_status, config_name in results:
-
-#         if config_name not in data:
-#             data[config_name] = {
-#                 "sizes": [], "elapsed_times": [], "amgx_times": [], "iterations": [],
-#                 "failed_sizes": [], "failed_amgx_times": [], "failed_iterations": []
-#             }
-
-#         if solver_status == 0: 
-#             data[config_name]["sizes"].append(num_rows)
-#             data[config_name]["elapsed_times"].append(elapsed_time)
-#             data[config_name]["amgx_times"].append(amgx_time)
-#             data[config_name]["iterations"].append(amgx_iterations)
-#         else:
-#             data[config_name]["failed_sizes"].append(num_rows)
-#             data[config_name]["failed_amgx_times"].append(amgx_time)
-#             data[config_name]["failed_iterations"].append(amgx_iterations)
-
-#     # Plot AMGX time vs matrix size
-#     plt.figure(figsize=(10, 6))
-#     for config_name, values in data.items():
-#         # Plot successful cases
-#         line, = plt.plot(values["sizes"], values["amgx_times"], marker='o', linestyle='-', label=config_name)
-
-#         # Use the same color for failed cases
-#         plt.scatter(values["failed_sizes"], values["failed_amgx_times"], marker='x', color=line.get_color(), label=f"{config_name} (Failed)")
-
-
-#     plt.xlabel("Matrix Size (Number of Rows)")
-#     plt.ylabel("AMGX Solve Time (s)")
-#     plt.title("AMGX Solve Time vs Matrix Size")
-#     plt.legend()
-#     plt.grid(True)
-#     plt.savefig(os.path.join(PLOT_DIR, "amgx_solve_time.png"))
-#     plt.show()
-
-#     # Plot iterations vs matrix size
-#     plt.figure(figsize=(10, 6))
-#     for config_name, values in data.items():
-#         plt.plot(values["sizes"], values["iterations"], marker='s', linestyle='-', label=config_name)
-
-#         # Mark failed cases with an "X"
-#         plt.scatter(values["failed_sizes"], values["failed_iterations"], marker='x', color='red', label=f"{config_name} (Failed)")
-
-#     plt.xlabel("Matrix Size (Number of Rows)")
-#     plt.ylabel("Number of Iterations")
-#     plt.title("Iterations vs Matrix Size")
-#     plt.legend()
-#     plt.grid(True)
-#     plt.savefig(os.path.join(PLOT_DIR, "iterations_vs_matrix_size.png"))
-#     plt.show()
 
 def plot_results(results):
     """Plots time and iterations against matrix sizes, marking failed solves with an 'X'."""
@@ -335,10 +356,10 @@ def plot_results(results):
         sorted_failed_iterations = np.array(values["failed_iterations"])[sorted_fail_indices]
 
         # Plot successful cases
-        plt.plot(sorted_sizes, sorted_iterations, marker='s', linestyle='-', label=config_name)
+        line, = plt.plot(sorted_sizes, sorted_iterations, marker='s', linestyle='-', label=config_name)
 
         # Mark failed cases with an "X"
-        plt.scatter(sorted_failed_sizes, sorted_failed_iterations, marker='x', color='red', label=f"{config_name} (Failed)")
+        plt.scatter(sorted_failed_sizes, sorted_failed_iterations, marker='x', color=line.get_color(), label=f"{config_name} (Failed)")
 
     plt.xlabel("Matrix Size (Number of Rows)")
     plt.ylabel("Number of Iterations")
