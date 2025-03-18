@@ -42,3 +42,5 @@ Total Time: 0.00154589
     setup: 1.4944e-05 s
     solve: 0.00153094 s
     solve(per iteration): 0.000127579 s
+
+Solver Status: 0

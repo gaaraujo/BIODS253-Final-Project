@@ -71,6 +71,7 @@ def parse_amgx_log(log_file):
               - setup_time
               - solve_time
               - solve_time_per_iteration
+              - solver_status
     """
     data = {
         "total_iterations": None,
@@ -82,6 +83,7 @@ def parse_amgx_log(log_file):
         "setup_time": None,
         "solve_time": None,
         "solve_time_per_iteration": None,
+        "solver_status": None,
     }
 
     try:
@@ -102,6 +104,8 @@ def parse_amgx_log(log_file):
         data["setup_time"] = find_last(r"setup:\s+([\d.e+-]+)", log_content)
         data["solve_time"] = find_last(r"solve:\s+([\d.e+-]+)", log_content)
         data["solve_time_per_iteration"] = find_last(r"solve\(per iteration\):\s+([\d.e+-]+)", log_content)
+        #data["solver_status"] = find_last(r"Solver Status:\s+(\d+)", log_content, int)
+        data["solver_status"] = find_last(r"Solver Status:\s+(-?\d+)", log_content, int)
 
     except Exception as e:
         print(f"[ERROR] Failed to parse log {log_file}: {e}")

@@ -36,7 +36,7 @@ def run_test(matrix_path, config_file, use_cpu=False, pin_memory=True):
 
     # **Clear the log file before running**
     open(log_file, "w").close()
-    
+
     try:
         A = load_matrix(matrix_path)  # Load the sparse matrix
         num_rows = A.shape[0]
@@ -61,10 +61,11 @@ def run_test(matrix_path, config_file, use_cpu=False, pin_memory=True):
         elapsed_time = end_time - start_time
         log_data = parse_amgx_log(log_file)
 
+        solver_status = log_data.get("solver_status", None)
         amgx_time = log_data.get("total_time", None)
         iterations = log_data.get("total_iterations", None)
 
-        print(f"[RESULT] {matrix_name} ({config_name}): Iterations={iterations}, Elapsed Time={elapsed_time:.6f} s, AMGX Time={amgx_time:.6f} s")
+        print(f"[RESULT] {matrix_name} ({config_name}): Solver Status={solver_status}, Iterations={iterations}, Elapsed Time={elapsed_time:.6f} s, AMGX Time={amgx_time:.6f} s")
 
         return num_rows, elapsed_time, log_data, config_name
 
@@ -98,8 +99,9 @@ def main():
     # Generate plots
     plot_results(results)
 
+
 def plot_results(results):
-    """Plots time and iterations against matrix sizes."""
+    """Plots time and iterations against matrix sizes, marking failed solves with an 'X'."""
     import matplotlib.pyplot as plt
 
     # Dictionary to store results for plotting
@@ -108,19 +110,31 @@ def plot_results(results):
     for num_rows, elapsed_time, log_data, config_name in results:
         amgx_time = log_data.get("total_time", None)
         iterations = log_data.get("total_iterations", None)
+        solver_status = log_data.get("solver_status", None)
 
         if config_name not in data:
-            data[config_name] = {"sizes": [], "elapsed_times": [], "amgx_times": [], "iterations": []}
-        
-        data[config_name]["sizes"].append(num_rows)
-        data[config_name]["elapsed_times"].append(elapsed_time)
-        data[config_name]["amgx_times"].append(amgx_time)
-        data[config_name]["iterations"].append(iterations)
+            data[config_name] = {
+                "sizes": [], "elapsed_times": [], "amgx_times": [], "iterations": [],
+                "failed_sizes": [], "failed_amgx_times": [], "failed_iterations": []
+            }
+
+        if solver_status == 0: 
+            data[config_name]["sizes"].append(num_rows)
+            data[config_name]["elapsed_times"].append(elapsed_time)
+            data[config_name]["amgx_times"].append(amgx_time)
+            data[config_name]["iterations"].append(iterations)
+        else:
+            data[config_name]["failed_sizes"].append(num_rows)
+            data[config_name]["failed_amgx_times"].append(amgx_time)
+            data[config_name]["failed_iterations"].append(iterations)
 
     # Plot AMGX time vs matrix size
     plt.figure(figsize=(10, 6))
     for config_name, values in data.items():
         plt.plot(values["sizes"], values["amgx_times"], marker='o', linestyle='-', label=config_name)
+
+        # Mark failed cases with an "X"
+        plt.scatter(values["failed_sizes"], values["failed_amgx_times"], marker='x', color='red', label=f"{config_name} (Failed)")
 
     plt.xlabel("Matrix Size (Number of Rows)")
     plt.ylabel("AMGX Solve Time (s)")
@@ -135,6 +149,9 @@ def plot_results(results):
     for config_name, values in data.items():
         plt.plot(values["sizes"], values["iterations"], marker='s', linestyle='-', label=config_name)
 
+        # Mark failed cases with an "X"
+        plt.scatter(values["failed_sizes"], values["failed_iterations"], marker='x', color='red', label=f"{config_name} (Failed)")
+
     plt.xlabel("Matrix Size (Number of Rows)")
     plt.ylabel("Number of Iterations")
     plt.title("Iterations vs Matrix Size")
@@ -142,7 +159,6 @@ def plot_results(results):
     plt.grid(True)
     plt.savefig(os.path.join(PLOT_DIR, "iterations_vs_matrix_size.png"))
     plt.show()
-
 
 if __name__ == "__main__":
     main()
