@@ -16,7 +16,7 @@
     break; \
   default: \
     AMGX_get_error_string(err, msg, 4096); \
-    fprintf(stderr, "AMGX ERROR: file %s line %6d\n", __FILE__, __LINE__); \
+    fprintf(stderr, "AMGX ERROR in function: %s at file %s line %6d\n", #rc, __FILE__, __LINE__); \
     fprintf(stderr, "AMGX ERROR: %s\n", msg); \
     throw std::runtime_error(std::string("AMGX ERROR: ") + msg); \
   } \
@@ -26,9 +26,13 @@ class AMGXSolver
 {
 public:
     AMGXSolver(const char* config_file, bool use_cpu = false, const int* gpu_ids = nullptr,
-               int num_gpus = 0, bool pin_memory = true, const char* log_file = nullptr);
+               int num_gpus = 0, bool pin_memory = false, const char* log_file = nullptr);
     ~AMGXSolver();
     
+    void initialize(const char *config_file, bool use_cpu, const int *gpu_ids, 
+                            int num_gpus, bool pin_memory, const char* log_file); 
+    void cleanup();
+
     void initializeMatrix(int num_rows, const int* row_ptr, const int* col_indices,
                    const double* values);
     void replaceCoefficients(int num_rows, int num_non_zeros, 
@@ -40,6 +44,8 @@ private:
     static void callback(const char* msg, int length);
     static std::ofstream _log_file_stream;
     static bool _use_log_file;
+    static bool _amgx_initialized;
+    static int _active_solver_instances;
 
     AMGX_config_handle    _config       = nullptr;
     AMGX_resources_handle _resources    = nullptr;

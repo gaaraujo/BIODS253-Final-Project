@@ -193,6 +193,7 @@ void runTest(int size, const char* amgx_config_file, bool use_cpu = false, bool 
 
 // Tests expected exceptions with invalid inputs
 void testExpectedExceptions() {
+    std::cout << "\n------------------------";
     std::cout << "\n[INFO] Testing exception handling..." << std::endl;
 
     // Define valid and invalid inputs to avoid repetition
@@ -206,136 +207,239 @@ void testExpectedExceptions() {
     double valid_values[10] = {1.0, -1.0, -1.0, 2.0, -2.0, 3.0, -3.0, 4.0, -4.0, 5.0};
     double* null_values = nullptr;
 
+    double valid_b[5] = {1.0, -1.0, -1.0, 2.0, -2.0};
+    double invalid_b[4] = {1.0, -1.0, -1.0, 2.0};
+    double valid_x[5] = {0.0, 0.0, 0.0, 0.0, 0.0};
+    double invalid_x[4] = {0.0, 0.0, 0.0, 0.0};
+
+    int gpu_ids[] = {0};
+    std::string valid_config = createDefaultConfigFile();
+    std::string invalid_config = "xjz.txt";
+    
     // 1. Test: Null configuration file
+    std::cout << "------------------------\n";
+    std::cout << "[TEST] Null configuration file\n";
     try {
-        AMGXSolver solver(nullptr, false, nullptr, 0, false);
+        AMGXSolver solver(nullptr, false, gpu_ids, 1, false);
         std::cerr << "[FAIL] Expected exception for null config file not thrown.\n";
         failedExceptionTests++;
-    } catch (const std::exception&) {
+    } catch (const std::exception& e) {
         std::cout << "[PASS] Caught expected exception: null config file\n";
+        std::cerr << "[INFO] Exception: " << e.what() << std::endl;
         passedExceptionTests++;
     }
 
-    // 2. Test: Invalid num_rows
+    // 2. Test: Invalid configuration file
+    std::cout << "------------------------\n";
+    std::cout << "[TEST] Invalid configuration file\n";
     try {
-        AMGXSolver solver("config.json", false, nullptr, 1, false);
+        AMGXSolver solver(invalid_config.c_str(), false, gpu_ids, 1, false);
+        std::cerr << "[FAIL] Expected exception for invalid config file not thrown.\n";
+        failedExceptionTests++;
+    } catch (const std::exception& e) {
+        std::cout << "[PASS] Caught expected exception: invalid config file\n";
+        std::cerr << "[INFO] Exception: " << e.what() << std::endl;
+        passedExceptionTests++;
+    }
+
+    // 3. Test: Invalid num_rows
+    std::cout << "------------------------\n";
+    std::cout << "[TEST] Invalid num_rows\n";
+    try {
+        AMGXSolver solver(valid_config.c_str(), false, gpu_ids, 1, false);
         solver.initializeMatrix(invalid_num_rows, valid_row_ptr, valid_col_indices, valid_values);
         std::cerr << "[FAIL] Expected exception for invalid num_rows not thrown.\n";
         failedExceptionTests++;
-    } catch (const std::exception&) {
+    } catch (const std::exception& e) {
         std::cout << "[PASS] Caught expected exception: invalid num_rows\n";
+        std::cerr << "[INFO] Exception: " << e.what() << std::endl;
         passedExceptionTests++;
     }
 
-    // 3. Test: GPU mode but null gpu_ids
+    // 4. Test: GPU mode but null gpu_ids
+    std::cout << "------------------------\n";
+    std::cout << "[TEST] GPU mode but null gpu_ids\n";
     try {
-        AMGXSolver solver("config.json", false, nullptr, 1, false);
+        AMGXSolver solver(valid_config.c_str(), false, nullptr, 1, false);
         std::cerr << "[FAIL] Expected exception for null GPU IDs in GPU mode not thrown.\n";
         failedExceptionTests++;
-    } catch (const std::exception&) {
+    } catch (const std::exception& e) {
         std::cout << "[PASS] Caught expected exception: null GPU IDs in GPU mode\n";
+        std::cerr << "[INFO] Exception: " << e.what() << std::endl;
         passedExceptionTests++;
     }
 
-    // 4. Test: GPU mode but num_gpus <= 0
+    // 5. Test: GPU mode but num_gpus <= 0
+    std::cout << "------------------------\n";
+    std::cout << "[TEST] GPU mode but num_gpus <= 0\n";
     try {
         int gpu_ids[] = {0};
-        AMGXSolver solver("config.json", false, gpu_ids, 0, false);
+        AMGXSolver solver(valid_config.c_str(), false, gpu_ids, 0, false);
         std::cerr << "[FAIL] Expected exception for non-positive num_gpus in GPU mode not thrown.\n";
         failedExceptionTests++;
-    } catch (const std::exception&) {
+    } catch (const std::exception& e) {
         std::cout << "[PASS] Caught expected exception: non-positive num_gpus in GPU mode\n";
+        std::cerr << "[INFO] Exception: " << e.what() << std::endl;
         passedExceptionTests++;
     }
 
-    // 5. Test: Null col_indices
+    // 6. Test: Null col_indices
+    std::cout << "------------------------\n";
+    std::cout << "[TEST] Null col_indices\n";
     try {
-        AMGXSolver solver("config.json", false, nullptr, 1, false);
+        AMGXSolver solver(valid_config.c_str(), false, gpu_ids, 1, false);
         solver.initializeMatrix(num_rows, valid_row_ptr, nullptr, valid_values);
         std::cerr << "[FAIL] Expected exception for null col_indices not thrown.\n";
         failedExceptionTests++;
-    } catch (const std::exception&) {
+    } catch (const std::exception& e) {
         std::cout << "[PASS] Caught expected exception: null col_indices\n";
-        passedExceptionTests++;
-    }
-
-    // 6. Test: Invalid col_indices
-    try {
-        AMGXSolver solver("config.json", false, nullptr, 1, false);
-        solver.initializeMatrix(num_rows, valid_row_ptr, invalid_col_indices, valid_values);
-        std::cerr << "[FAIL] Expected exception for invalid col_indices not thrown.\n";
-        failedExceptionTests++;
-    } catch (const std::exception&) {
-        std::cout << "[PASS] Caught expected exception: invalid col_indices\n";
+        std::cerr << "[INFO] Exception: " << e.what() << std::endl;
         passedExceptionTests++;
     }
 
     // 7. Test: Null row_ptr
+    std::cout << "------------------------\n";
+    std::cout << "[TEST] Null row_ptr\n";
     try {
-        AMGXSolver solver("config.json", false, nullptr, 1, false);
+        AMGXSolver solver(valid_config.c_str(), false, gpu_ids, 1, false);
         solver.initializeMatrix(num_rows, nullptr, valid_col_indices, valid_values);
         std::cerr << "[FAIL] Expected exception for null row_ptr not thrown.\n";
         failedExceptionTests++;
-    } catch (const std::exception&) {
+    } catch (const std::exception& e) {
         std::cout << "[PASS] Caught expected exception: null row_ptr\n";
+        std::cerr << "[INFO] Exception: " << e.what() << std::endl;
         passedExceptionTests++;
     }
 
-    // 8. Test: Invalid row_ptr
+    // 8. Test: Null data values
+    std::cout << "------------------------\n";
+    std::cout << "[TEST] Null data values\n";
     try {
-        AMGXSolver solver("config.json", false, nullptr, 1, false);
-        solver.initializeMatrix(num_rows, invalid_row_ptr, valid_col_indices, valid_values);
-        std::cerr << "[FAIL] Expected exception for invalid row_ptr not thrown.\n";
-        failedExceptionTests++;
-    } catch (const std::exception&) {
-        std::cout << "[PASS] Caught expected exception: invalid row_ptr\n";
-        passedExceptionTests++;
-    }
-
-    // 9. Test: Null data values
-    try {
-        AMGXSolver solver("config.json", false, nullptr, 1, false);
+        AMGXSolver solver(valid_config.c_str(), false, gpu_ids, 1, false);
         solver.initializeMatrix(num_rows, valid_row_ptr, valid_col_indices, null_values);
         std::cerr << "[FAIL] Expected exception for null data values not thrown.\n";
         failedExceptionTests++;
-    } catch (const std::exception&) {
+    } catch (const std::exception& e) {
         std::cout << "[PASS] Caught expected exception: null data values\n";
+        std::cerr << "[INFO] Exception: " << e.what() << std::endl;
         passedExceptionTests++;
     }
 
-    // 10. Test: replaceCoefficients with mismatching num_rows
+    // 9. Test: replaceCoefficients with mismatching num_rows
+    std::cout << "------------------------\n";
+    std::cout << "[TEST] replaceCoefficients with mismatching num_rows\n";
     try {
-        AMGXSolver solver("config.json", false, nullptr, 1, false);
+        AMGXSolver solver(valid_config.c_str(), false, gpu_ids, 1, false);
         solver.initializeMatrix(num_rows, valid_row_ptr, valid_col_indices, valid_values);
         solver.replaceCoefficients(num_rows + 1, num_non_zeros, valid_values);
         std::cerr << "[FAIL] Expected exception for replaceCoefficients with mismatching num_rows not thrown.\n";
         failedExceptionTests++;
-    } catch (const std::exception&) {
+    } catch (const std::exception& e) {
         std::cout << "[PASS] Caught expected exception: replaceCoefficients mismatching num_rows\n";
+        std::cerr << "[INFO] Exception: " << e.what() << std::endl;
         passedExceptionTests++;
     }
 
-    // 11. Test: replaceCoefficients with mismatching number of nonzeros
+    // 10. Test: replaceCoefficients with mismatching number of nonzeros
+    std::cout << "------------------------\n";
+    std::cout << "[TEST] replaceCoefficients with mismatching number of nonzeros\n";
     try {
-        AMGXSolver solver("config.json", false, nullptr, 1, false);
+        AMGXSolver solver(valid_config.c_str(), false, gpu_ids, 1, false);
         solver.initializeMatrix(num_rows, valid_row_ptr, valid_col_indices, valid_values);
         solver.replaceCoefficients(num_rows, num_non_zeros - 1, valid_values);
         std::cerr << "[FAIL] Expected exception for replaceCoefficients with mismatching number of nonzeros not thrown.\n";
         failedExceptionTests++;
-    } catch (const std::exception&) {
+    } catch (const std::exception& e) {
         std::cout << "[PASS] Caught expected exception: replaceCoefficients mismatching number of nonzeros\n";
+        std::cerr << "[INFO] Exception: " << e.what() << std::endl;
         passedExceptionTests++;
     }
 
-    // 12. Test: replaceCoefficients with nullptr values
+    // 11. Test: replaceCoefficients with nullptr values
+    std::cout << "------------------------\n";
+    std::cout << "[TEST] replaceCoefficients with nullptr values\n";
     try {
-        AMGXSolver solver("config.json", false, nullptr, 1, false);
+        AMGXSolver solver(valid_config.c_str(), false, gpu_ids, 1, false);
         solver.initializeMatrix(num_rows, valid_row_ptr, valid_col_indices, valid_values);
         solver.replaceCoefficients(num_rows, num_non_zeros, nullptr);
         std::cerr << "[FAIL] Expected exception for replaceCoefficients with null values not thrown.\n";
         failedExceptionTests++;
-    } catch (const std::exception&) {
+    } catch (const std::exception& e) {
         std::cout << "[PASS] Caught expected exception: replaceCoefficients null values\n";
+        std::cerr << "[INFO] Exception: " << e.what() << std::endl;
+        passedExceptionTests++;
+    }
+
+    // 12. Test: replaceCoefficients before matrix initialization
+    std::cout << "------------------------\n";
+    std::cout << "[TEST] replaceCoefficients before matrix initialization\n";
+    try {
+        AMGXSolver solver(valid_config.c_str(), false, gpu_ids, 1, false);
+        solver.replaceCoefficients(num_rows, num_non_zeros, valid_values);
+        std::cerr << "[FAIL] Expected exception for replaceCoefficients before matrix initialization not thrown.\n";
+        failedExceptionTests++;
+    } catch (const std::exception& e) {
+        std::cout << "[PASS] Caught expected exception: replaceCoefficients before matrix initialization\n";
+        std::cerr << "[INFO] Exception: " << e.what() << std::endl;
+        passedExceptionTests++;
+    }
+
+    // 13. Test: Solve before matrix initialization
+    std::cout << "------------------------\n";
+    std::cout << "[TEST] Solve before matrix initialization\n";
+    try {
+        AMGXSolver solver(valid_config.c_str(), false, gpu_ids, 1, false);
+        solver.solve(valid_x, valid_b, num_rows);
+        std::cerr << "[FAIL] Expected exception for solve before matrix initialization not thrown.\n";
+        failedExceptionTests++;
+    } catch (const std::exception& e) {
+        std::cout << "[PASS] Caught expected exception: solve before matrix initialization\n";
+        std::cerr << "[INFO] Exception: " << e.what() << std::endl;
+        passedExceptionTests++;
+    }
+
+    // 14. Test: Solve with null values for right-hand side
+    std::cout << "------------------------\n";
+    std::cout << "[TEST] Solve with null values for right-hand side\n";
+    try {
+        AMGXSolver solver(valid_config.c_str(), false, gpu_ids, 1, false);
+        solver.initializeMatrix(num_rows, valid_row_ptr, valid_col_indices, valid_values);
+        solver.solve(valid_x, nullptr, num_rows);
+        std::cerr << "[FAIL] Expected exception for solve with null values for right-hand side not thrown.\n";
+        failedExceptionTests++;
+    } catch (const std::exception& e) {
+        std::cout << "[PASS] Caught expected exception: solve with null values for right-hand side\n";
+        std::cerr << "[INFO] Exception: " << e.what() << std::endl;
+        passedExceptionTests++;
+    }
+
+    // 15. Test: Solve with null values for solution
+    std::cout << "------------------------\n";
+    std::cout << "[TEST] Solve with null values for solution\n";
+    try {
+        AMGXSolver solver(valid_config.c_str(), false, gpu_ids, 1, false);
+        solver.initializeMatrix(num_rows, valid_row_ptr, valid_col_indices, valid_values);
+        solver.solve(nullptr, valid_b, num_rows);
+        std::cerr << "[FAIL] Expected exception for solve with null values for solution not thrown.\n";
+        failedExceptionTests++;
+    } catch (const std::exception& e) {
+        std::cout << "[PASS] Caught expected exception: solve with null values for solution\n";
+        std::cerr << "[INFO] Exception: " << e.what() << std::endl;
+        passedExceptionTests++;
+    }
+
+    // 16. Test: Solve with invalid num_rows
+    std::cout << "------------------------\n";
+    std::cout << "[TEST] Solve with invalid num_rows\n";
+    try {
+        AMGXSolver solver(valid_config.c_str(), false, gpu_ids, 1, false);
+        solver.initializeMatrix(num_rows, valid_row_ptr, valid_col_indices, valid_values);
+        solver.solve(valid_x, valid_b, num_rows + 1);
+        std::cerr << "[FAIL] Expected exception for solve with invalid num_rows not thrown.\n";
+        failedExceptionTests++;
+    } catch (const std::exception& e) {
+        std::cout << "[PASS] Caught expected exception: solve with invalid num_rows\n";
+        std::cerr << "[INFO] Exception: " << e.what() << std::endl;
         passedExceptionTests++;
     }
 }

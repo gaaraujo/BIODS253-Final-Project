@@ -2,91 +2,160 @@
 
 std::ofstream AMGXSolver::_log_file_stream;
 bool AMGXSolver::_use_log_file = false;
+bool AMGXSolver::_amgx_initialized = false;
+int AMGXSolver::_active_solver_instances = 0; // Track active instances
 
 /* 
 Note from AMGX Reference:
 It is recommended that the host buffers passed to AMGX vector upload be pinned 
 previously via AMGX pin memory. This allows the underlying CUDA driver to 
 achieve higher data transfer rates across the PCI-Express bus.*/
+
 AMGXSolver::AMGXSolver(const char *config_file, bool use_cpu, const int *gpu_ids, 
                         int num_gpus, bool pin_memory, const char* log_file)
-    : _use_cpu(use_cpu), _pin_memory(pin_memory)
 {
-    if (config_file == nullptr) {
-        throw std::invalid_argument("Configuration file path cannot be null");
+    try {
+        initialize(config_file, use_cpu, gpu_ids, num_gpus, pin_memory, log_file);
     }
-
-    if (!_use_cpu && gpu_ids == nullptr) {
-        throw std::invalid_argument("GPU IDs array cannot be null when using GPU mode");
+    catch (const std::exception &e) {
+        std::cerr << "[ERROR] AMGXSolver constructor failed: " << e.what() << std::endl;
+        throw; // Rethrow exception to inform the caller
     }
-
-    if (!_use_cpu && num_gpus <= 0) {
-        throw std::invalid_argument("Number of GPUs must be positive when using GPU mode");
-    }
-
-    if (_use_cpu && gpu_ids != nullptr)
-    {
-        std::cout << "Cannot specify both CPU mode and GPU IDs. " 
-                  << "GPU IDs will be ignored.\n";
-    }
-
-    // Open log file if provided
-    if (log_file != nullptr) {
-        _log_file_stream.open(log_file, std::ios::out | std::ios::app);
-        if (!_log_file_stream.is_open()) {
-            throw std::runtime_error("Failed to open log file.");
-        }
-        _use_log_file = true;
-    } else {
-        _use_log_file = false;
-    }
-
-    /* Initialize AMGX library with user-defined error handling*/
-    CHECK_AMGX_CALL(AMGX_initialize());
-    //CHECK_AMGX_CALL(AMGX_initialize_plugins()); // deprecated
-    CHECK_AMGX_CALL(AMGX_register_print_callback(&AMGXSolver::callback));
-    CHECK_AMGX_CALL(AMGX_install_signal_handler());
-
-    /* AMGX configuration file*/
-    CHECK_AMGX_CALL(AMGX_config_create_from_file(&_config, config_file));
-
-    /* AMGX mode and resources*/
-    if (_use_cpu)
-    {
-        _mode = AMGX_mode_hDDI;
-        CHECK_AMGX_CALL(AMGX_resources_create_simple(&_resources, _config));
-    }
-    else
-    {
-        _mode = AMGX_mode_dDDI;
-        CHECK_AMGX_CALL(AMGX_resources_create(&_resources, _config, NULL, num_gpus, 
-                                                gpu_ids));
-    }
-
-    /* AMGX matrices and vectors */
-    CHECK_AMGX_CALL(AMGX_matrix_create(&_matrix, _resources, _mode));
-    CHECK_AMGX_CALL(AMGX_vector_create(&_rhs, _resources, _mode));
-    CHECK_AMGX_CALL(AMGX_vector_create(&_solution, _resources, _mode));
-
-    /* AMGX solver*/
-    CHECK_AMGX_CALL(AMGX_solver_create(&_solver, _resources, _mode, _config));
 }
+
 
 AMGXSolver::~AMGXSolver()
 {
-    if (_solver) AMGX_solver_destroy(_solver);
-    if (_solution) AMGX_vector_destroy(_solution);
-    if (_rhs) AMGX_vector_destroy(_rhs);
-    if (_matrix) AMGX_matrix_destroy(_matrix);
-    if (_resources) AMGX_resources_destroy(_resources);
-    if (_config) AMGX_config_destroy(_config);
-    //AMGX_finalize_plugins(); // deprecated
-    AMGX_reset_signal_handler();
-    AMGX_finalize();
-    
-    // Close log file if opened
-    if (_use_log_file && _log_file_stream.is_open()) {
-        _log_file_stream.close();
+    try {
+        cleanup();
+    } 
+    catch (const std::exception &e) {
+        std::cerr << "[ERROR] Exception in AMGXSolver destructor: " << e.what() << std::endl;
+    }
+}
+
+
+void AMGXSolver::initialize(const char *config_file, bool use_cpu, const int *gpu_ids, 
+                            int num_gpus, bool pin_memory, const char* log_file) 
+{
+    try {
+        if (config_file == nullptr) {
+            throw std::invalid_argument("Configuration file path cannot be null");
+        }
+
+        if (!use_cpu && gpu_ids == nullptr) {
+            throw std::invalid_argument("GPU IDs array cannot be null when using GPU mode");
+        }
+
+        if (!use_cpu && num_gpus <= 0) {
+            throw std::invalid_argument("Number of GPUs must be positive when using GPU mode");
+        }
+
+        if (use_cpu && gpu_ids != nullptr) {
+            std::cout << "[WARNING] CPU mode selected, ignoring provided GPU IDs.\n";
+        }
+
+        // Open log file if provided
+        if (log_file != nullptr) {
+            _log_file_stream.open(log_file, std::ios::out | std::ios::app);
+            if (!_log_file_stream.is_open()) {
+                throw std::runtime_error("Failed to open log file.");
+            }
+            _use_log_file = true;
+        } else {
+            _use_log_file = false;
+        }
+
+        /* Initialize AMGX library */
+        if (!_amgx_initialized) {
+            CHECK_AMGX_CALL(AMGX_initialize());
+            CHECK_AMGX_CALL(AMGX_register_print_callback(&AMGXSolver::callback));
+            CHECK_AMGX_CALL(AMGX_install_signal_handler());
+            _amgx_initialized = true;
+        }
+
+        /* Create AMGX configuration */
+        if (_config != nullptr) {
+            AMGX_config_destroy(_config);
+            _config = nullptr;
+        }
+        CHECK_AMGX_CALL(AMGX_config_create_from_file(&_config, config_file));
+
+        /* Set AMGX mode and create resources */
+        _use_cpu = use_cpu;
+        _pin_memory = pin_memory;
+        if (_resources != nullptr) {
+            AMGX_resources_destroy(_resources);
+            _resources = nullptr;
+        }
+        if (_use_cpu) {
+            _mode = AMGX_mode_hDDI;
+            CHECK_AMGX_CALL(AMGX_resources_create_simple(&_resources, _config));
+        } else {
+            _mode = AMGX_mode_dDDI;
+            CHECK_AMGX_CALL(AMGX_resources_create(&_resources, _config, nullptr, num_gpus, gpu_ids));
+        }
+
+        /* Create solver */
+        if (_solver != nullptr) {
+            AMGX_solver_destroy(_solver);
+            _solver = nullptr;
+        }
+        CHECK_AMGX_CALL(AMGX_solver_create(&_solver, _resources, _mode, _config));
+
+        /* Create matrix and vectors */
+        if (_matrix != nullptr) {
+            AMGX_matrix_destroy(_matrix);
+            _matrix = nullptr;
+        }
+        if (_rhs != nullptr) {
+            AMGX_vector_destroy(_rhs);
+            _rhs = nullptr;
+        }
+        if (_solution != nullptr) {
+            AMGX_vector_destroy(_solution);
+            _solution = nullptr;
+        }
+        CHECK_AMGX_CALL(AMGX_matrix_create(&_matrix, _resources, _mode));
+        CHECK_AMGX_CALL(AMGX_vector_create(&_rhs, _resources, _mode));
+        CHECK_AMGX_CALL(AMGX_vector_create(&_solution, _resources, _mode));
+
+        _active_solver_instances++;
+    }
+    catch (const std::exception &e) {
+        std::cerr << "[ERROR] AMGXSolver initialization failed: " << e.what() << std::endl;
+        cleanup(); // Ensure cleanup on failure
+        throw; // Re-throw exception to notify caller
+    }
+}
+
+
+void AMGXSolver::cleanup() {
+    try {
+        if (_solution) { AMGX_vector_destroy(_solution); _solution = nullptr; }
+        if (_rhs) { AMGX_vector_destroy(_rhs); _rhs = nullptr; }
+        if (_matrix) { AMGX_matrix_destroy(_matrix); _matrix = nullptr; }
+        if (_solver) { AMGX_solver_destroy(_solver); _solver = nullptr; }
+        if (_resources) { AMGX_resources_destroy(_resources); _resources = nullptr; }
+        if (_config) { AMGX_config_destroy(_config); _config = nullptr; }
+
+        if (_active_solver_instances > 0) {
+            _active_solver_instances--;
+        }
+
+        // Finalize AMGX only when last instance is destroyed
+        if (_active_solver_instances == 0 && _amgx_initialized) {
+            AMGX_reset_signal_handler();
+            AMGX_finalize();
+            _amgx_initialized = false;
+
+            if (_use_log_file && _log_file_stream.is_open()) {
+                _log_file_stream.close();
+            }
+        }
+    } 
+    catch (const std::exception &e) {
+        std::cerr << "[ERROR] Exception in AMGXSolver::cleanup: " << e.what() << std::endl;
     }
 }
 
@@ -125,6 +194,10 @@ void AMGXSolver::initializeMatrix(int num_rows, const int *row_ptr,
 void AMGXSolver::replaceCoefficients(int num_rows, int num_non_zeros, 
                     const double *values)
 {
+    if (this->_num_non_zeros <= 0 || this->_num_rows <= 0) {
+        throw std::invalid_argument("Matrix has not been initialized. Use AMGXSolver::initializeMatrix() method instead");
+    }
+
     if (num_rows <= 0) {
         throw std::invalid_argument("Number of rows must be positive");
     }
@@ -145,6 +218,7 @@ void AMGXSolver::replaceCoefficients(int num_rows, int num_non_zeros,
     if (!_use_cpu && _pin_memory) {
         CHECK_AMGX_CALL(AMGX_pin_memory((void*)values, sizeof(double) * _num_non_zeros));
     }
+
     CHECK_AMGX_CALL(AMGX_matrix_replace_coefficients(_matrix, _num_rows, 
                                             _num_non_zeros, values, nullptr));
     if (!_use_cpu && _pin_memory) {
@@ -161,6 +235,10 @@ int AMGXSolver::solve(void)
 
 int AMGXSolver::solve(double* x, const double* b, int num_rows) 
 {
+    if (this->_num_non_zeros <= 0 || this->_num_rows <= 0) {
+        throw std::invalid_argument("Matrix has not been initialized. Use AMGXSolver::initializeMatrix()");
+    }
+
     if (num_rows <= 0) {
         throw std::invalid_argument("Number of rows must be positive");
     }

@@ -17,7 +17,17 @@ endif()
 
 # Find required packages
 find_package(CUDAToolkit REQUIRED)
-find_package(pybind11 REQUIRED)
+
+# Find pybind11 using Python
+# To ensure consistent versions between components Interpreter, Compiler, Development (or one of its sub-components) 
+# and NumPy, specify all components at the same time: https://cmake.org/cmake/help/latest/module/FindPython.html
+find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
+execute_process(
+    COMMAND ${Python3_EXECUTABLE} -c "import pybind11; print(pybind11.get_cmake_dir())"
+    OUTPUT_VARIABLE pybind11_DIR
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+find_package(pybind11 REQUIRED PATHS ${pybind11_DIR} NO_DEFAULT_PATH)
 
 # Set AMGX paths: use custom path if specified, otherwise use the default
 set(AMGX_CUSTOM_PATH "" CACHE PATH "Custom AMGX installation path")
