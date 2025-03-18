@@ -64,8 +64,9 @@ def run_test(matrix_path, config_file, use_cpu=False, pin_memory=True):
         solver_status = log_data.get("solver_status", None)
         amgx_time = log_data.get("total_time", None)
         iterations = log_data.get("total_iterations", None)
+        final_residual = log_data.get("final_residual", None)
 
-        print(f"[RESULT] {matrix_name} ({config_name}): Solver Status={solver_status}, Iterations={iterations}, Elapsed Time={elapsed_time:.6f} s, AMGX Time={amgx_time:.6f} s")
+        print(f"[RESULT] {matrix_name} ({config_name}): Num. Rows={num_rows}, Solver Status={solver_status}, Residual={final_residual}, Iterations={iterations}, Elapsed Time={elapsed_time:.6f} s, AMGX Time={amgx_time:.6f} s")
 
         return num_rows, elapsed_time, log_data, config_name
 
@@ -131,10 +132,12 @@ def plot_results(results):
     # Plot AMGX time vs matrix size
     plt.figure(figsize=(10, 6))
     for config_name, values in data.items():
-        plt.plot(values["sizes"], values["amgx_times"], marker='o', linestyle='-', label=config_name)
+        # Plot successful cases
+        line, = plt.plot(values["sizes"], values["amgx_times"], marker='o', linestyle='-', label=config_name)
 
-        # Mark failed cases with an "X"
-        plt.scatter(values["failed_sizes"], values["failed_amgx_times"], marker='x', color='red', label=f"{config_name} (Failed)")
+        # Use the same color for failed cases
+        plt.scatter(values["failed_sizes"], values["failed_amgx_times"], marker='x', color=line.get_color(), label=f"{config_name} (Failed)")
+
 
     plt.xlabel("Matrix Size (Number of Rows)")
     plt.ylabel("AMGX Solve Time (s)")
