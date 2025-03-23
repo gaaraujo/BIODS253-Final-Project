@@ -156,4 +156,4 @@ if [[ "$PLATFORM" == "Windows" ]]; then
 echo "✅ Build complete."
 echo "🕒 Build finished in ${SECONDS}s"
 
-echo "Remember to activate the `venv` environment before running python3 main.py."
+echo "Remember to activate the 'venv' environment before running python3 main.py."
