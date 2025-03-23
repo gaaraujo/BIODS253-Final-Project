@@ -127,16 +127,32 @@ $PYTHON -m pip install --upgrade pip
 if [ ! -f requirements.txt ]; then
   echo "⚠️ requirements.txt not found. Check that you have the latest version of the repo."
   exit 1
-else
-  $PYTHON -m pip install -r requirements.txt
 fi
+
+if ! $PYTHON -m pip install --dry-run -r requirements.txt &> /dev/null; then
+  echo "📦 Installing missing or mismatched packages..."
+  $PYTHON -m pip install -r requirements.txt
+else
+  echo "✅ All packages from requirements.txt are satisfied."
+fi
+
 
 # Build your main app
 rm -rf build # VERY IMPORTANT!
 mkdir -p build && cd build
-cmake ..
-make -j$(nproc)
 
+if [[ "$PLATFORM" == "Windows" ]]; then
+    echo "🔧 Configuring AMGXSolver Project with Visual Studio generator..."
+    cmake .. -DCMAKE_BUILD_TYPE=Release
+    echo "🏗️ Building AMGXSolver Project with cmake --build"
+    cmake --build . --config Release --target ALL_BUILD --parallel
+  else
+    echo "🔧 Configuring AMGXSolver Project with Unix Makefiles..."
+    cmake .. -DCMAKE_BUILD_TYPE=Release
+    echo "🏗️ Building AMGXSolver Project with make"
+    make -j$(nproc) all
+  fi
+  
 echo "✅ Build complete."
 echo "🕒 Build finished in ${SECONDS}s"
 

@@ -5,3 +5,4 @@ build/
 venv/
 *.pyc
 __pycache__/
+config.json

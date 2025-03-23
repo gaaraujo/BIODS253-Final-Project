@@ -17,6 +17,17 @@
 #include <fstream>
 #include <cstring>
 
+// Define SOLVER_API macro for cross-platform shared library export
+#ifdef _WIN32
+    #ifdef BUILDING_SOLVER
+        #define SOLVER_API __declspec(dllexport)
+    #else
+        #define SOLVER_API __declspec(dllimport)
+    #endif
+#else
+    #define SOLVER_API
+#endif
+
 /**
  * @brief Macro for AMGX error checking
  *
@@ -48,7 +59,7 @@
  * linear systems. Manages AMGX resources and handles initialization,
  * matrix setup, solving, and cleanup operations.
  */
-class AMGXSolver
+class SOLVER_API AMGXSolver
 {
 public:
     /**

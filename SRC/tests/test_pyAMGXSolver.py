@@ -18,9 +18,34 @@ The test suite includes:
 import numpy as np
 import scipy.sparse as sp
 import scipy.sparse.linalg as spla
-import pyAMGXSolver
 import os
 import json
+import sys
+
+# Add the build directory to Python path
+build_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "build"))
+if os.path.exists(build_dir):
+    # Add to Python path
+    if build_dir not in sys.path:
+        sys.path.insert(0, build_dir)  # Insert at beginning to ensure it's checked first
+    
+    # Add to Windows DLL search path
+    if sys.platform == 'win32':
+        try:
+            os.add_dll_directory(build_dir)
+            
+            # Add CUDA path if available
+            cuda_path = os.environ.get('CUDA_PATH')
+            if cuda_path:
+                cuda_bin = os.path.join(cuda_path, 'bin')
+                if os.path.exists(cuda_bin):
+                    os.add_dll_directory(cuda_bin)
+        except Exception as e:
+            print(f"Warning: Could not add DLL directory: {e}")
+else:
+    raise RuntimeError(f"Build directory not found at {build_dir}. Please build the project first.")
+
+import pyAMGXSolver
 
 # Default solver parameters
 DEFAULT_TOLERANCE = 1e-6
