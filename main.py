@@ -14,7 +14,7 @@ from amgx_log_parser import parse_amgx_log  # Function to extract performance da
 import argparse
 
 def parse_arguments():
-    """Parse command-line arguments for directory paths.
+    """Parse command-line arguments for directory paths and solver configuration.
 
     Returns:
         argparse.Namespace: Parsed command-line arguments containing:
@@ -25,9 +25,13 @@ def parse_arguments():
             - TEMP_DIR: Temporary directory for downloads
             - INPUT_CSV_FILE: CSV file containing matrix metadata
             - OUTPUT_CSV_FILE: CSV file containing test results
+            - use_cpu: Whether to use CPU instead of GPU
+            - pin_memory: Whether to use pinned memory
+            - num_runs: Number of runs for computing averages
     """
     parser = argparse.ArgumentParser(description="Run AMGX solver tests on a set of matrices from the SuiteSparse data set with different AMGX configuration files.")
     
+    # Directory paths
     parser.add_argument("-MATRIX_DIR", type=str, default="matrix_tests/matrices",
                         help="Directory containing matrix files (.mtx)")
     parser.add_argument("-LOG_DIR", type=str, default="matrix_tests/logs",
@@ -42,6 +46,14 @@ def parse_arguments():
                         help="CSV file containing matrix metadata")
     parser.add_argument("-OUTPUT_CSV_FILE", type=str, default="matrix_tests/plots/matrix_test_results.csv",
                         help="CSV file containing timings, number of iterations, and convergence")
+
+    # Solver configuration
+    parser.add_argument("--use_cpu", action="store_true", default=False,
+                        help="Use CPU instead of GPU for solving")
+    parser.add_argument("--pin_memory", type=bool, default=True,
+                        help="Whether to use pinned memory for GPU transfers")
+    parser.add_argument("--num_runs", type=int, default=11,
+                        help="Number of runs for computing average performance (first run discarded)")
 
     return parser.parse_args()
 
@@ -232,9 +244,9 @@ def main():
     """Main entry point for the AMGX solver testing pipeline.
 
     Workflow:
-    1. Parse command-line arguments for directory paths
+    1. Parse command-line arguments for directory paths and solver configuration
     2. Download missing matrices from SuiteSparse collection
-    3. Run solver tests with different configurations
+    3. Run solver tests with specified configuration
     4. Save results to CSV file
     5. Generate performance plots
 
@@ -326,7 +338,11 @@ def main():
 
         for config_file in config_files:
             config_name = os.path.basename(config_file).replace(".json", "")
-            result = run_test(matrix_path, config_file)
+            # Pass solver configuration from command line arguments
+            result = run_test(matrix_path, config_file, 
+                            use_cpu=args.use_cpu, 
+                            pin_memory=args.pin_memory, 
+                            k=args.num_runs)
             
             if result:
                 num_rows, avg_elapsed_time, avg_amgx_time, avg_iterations, solver_status, _ = result
