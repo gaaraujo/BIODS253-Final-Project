@@ -1,9 +1,7 @@
 matrix_tests/matrices/*
 matrix_tests/logs/*
 matrix_tests/temp/*
-amgx_env/
 build/
 venv/
 *.pyc
 __pycache__/
-
