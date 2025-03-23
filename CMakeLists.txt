@@ -62,7 +62,7 @@ include_directories(${AMGX_INCLUDE_DIR})
 # Create library from AMGXSolver
 add_library(solver SHARED ${CMAKE_CURRENT_SOURCE_DIR}/SRC/solver/AMGXSolver.cpp)
 target_include_directories(solver PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/SRC/solver)
-target_link_libraries(solver PRIVATE ${AMGX_LIBRARY_DIR}/libamgxsh.so)
+target_link_libraries(solver PRIVATE ${AMGX_LIBRARY_DIR}/${AMGX_LIB_NAME})
 
 # Create tests executable
 add_executable(test_solver ${CMAKE_CURRENT_SOURCE_DIR}/SRC/tests/test_solver.cpp)
