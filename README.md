@@ -42,9 +42,9 @@ cd BIODS253-Final-Project
 Create a virtual environment to ensure compatibility:
 
 ```bash
-python3 -m venv amgx_env
-source amgx_env/bin/activate  # macOS/Linux
-# On Windows: amgx_env\Scripts\activate
+python3 -m venv venv
+source venv/bin/activate  # macOS/Linux
+# On Windows: venv\Scripts\activate
 
 pip install -r requirements.txt
 ```

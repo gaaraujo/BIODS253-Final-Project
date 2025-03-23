@@ -82,7 +82,7 @@ def download_and_extract(group, matrix_name):
         # Find the .mtx file inside the extracted folder
         for root, _, files in os.walk(extract_path):
             for file in files:
-                if file.endswith(".mtx"):
+                if file == f"{matrix_name}.mtx":
                     extracted_mtx = os.path.join(root, file)
                     shutil.move(extracted_mtx, final_mtx_path)
                     print(f"✅ Saved {final_mtx_path}")

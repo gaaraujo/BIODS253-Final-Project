@@ -20,8 +20,8 @@ echo "Detected OS: $PLATFORM"
 # Load modules if on cluster (Linux HPC-like environment)
 echo "NOTE: Make sure the following modules are loaded appropriately for your system and added to your path:"
 if [[ "$PLATFORM" == "Linux" ]]; then
-  echo "module load cuda/12 cmake/3.24 python/3"
-  module load cuda/12 cmake/3.24 python/3  # <- change as needed
+  echo "module load cuda/12.6 cmake/3.24 python/3.12"
+  module load cuda/12.6 cmake/3.24 python/3.12  # <- change as needed
 else
   echo "cuda/12.x.x cmake/3.24 python/3.x.x"
 fi
