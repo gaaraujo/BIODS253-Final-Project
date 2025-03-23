@@ -56,7 +56,7 @@ REMOTE_HASH=$(git rev-parse origin/HEAD)
 cd "$PARENT_DIR" > /dev/null # Go back to the original directory 
 
 AMGX_LIB_LINUX="$AMGX_DIR/build/libamgxsh.so"
-AMGX_LIB_WINDOWS="$AMGX_DIR/build/Release/amgxsh.dll"
+AMGX_LIB_WINDOWS="$AMGX_DIR/lib/amgxsh.dll"
 
 if [[ "$LOCAL_HASH" != "$REMOTE_HASH" || ( ! -f "$AMGX_LIB_LINUX" && ! -f "$AMGX_LIB_WINDOWS" ) ]]; then
   echo "🔄 AmgX appears to be outdated or not yet built."
@@ -80,7 +80,7 @@ if [[ "$LOCAL_HASH" != "$REMOTE_HASH" || ( ! -f "$AMGX_LIB_LINUX" && ! -f "$AMGX
     echo "🔧 Configuring AmgX with Visual Studio generator..."
     cmake .. -DCMAKE_BUILD_TYPE=Release
     echo "🏗️ Building AmgX with cmake --build"
-    cmake --build . --config Release --target ALL_BUILD --parallel
+    cmake --build . --config Release --target INSTALL --parallel
   else
     echo "🔧 Configuring AmgX with Unix Makefiles..."
     cmake .. -DCMAKE_BUILD_TYPE=Release
