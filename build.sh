@@ -27,12 +27,18 @@ else
 fi
 
 # Choose correct Python interpreter
-if command -v python3 &> /dev/null; then
+PYTHON=""
+
+if command -v python3 &> /dev/null && [[ "$(python3 --version 2>&1)" == "Python 3."* ]]; then
   PYTHON=python3
-elif command -v python &> /dev/null && [[ "$($PYTHON --version 2>&1)" == "Python 3"* ]]; then
+elif command -v python &> /dev/null && [[ "$(python --version 2>&1)" == "Python 3."* ]]; then
   PYTHON=python
 else
-  echo "❌ No suitable Python 3 interpreter found. Exiting."
+  echo "❌ No suitable Python 3 interpreter found."
+  echo "🔧 Please manually set the PYTHON variable near the top of this script to your Python 3 path."
+  echo "💡 For example:"
+  echo '    PYTHON="/c/Users/yourname/AppData/Local/anaconda3/python.exe"'
+  echo "📝 Then comment out the automatic interpreter detection block."
   exit 1
 fi
 
@@ -74,7 +80,7 @@ if [[ "$LOCAL_HASH" != "$REMOTE_HASH" || ( ! -f "$AMGX_LIB_LINUX" && ! -f "$AMGX
     echo "🔧 Configuring AmgX with Visual Studio generator..."
     cmake .. -DCMAKE_BUILD_TYPE=Release
     echo "🏗️ Building AmgX with cmake --build"
-    cmake --build . --config Release --parallel
+    cmake --build . --config Release --target ALL_BUILD --parallel
   else
     echo "🔧 Configuring AmgX with Unix Makefiles..."
     cmake .. -DCMAKE_BUILD_TYPE=Release
@@ -133,3 +139,5 @@ make -j$(nproc)
 
 echo "✅ Build complete."
 echo "🕒 Build finished in ${SECONDS}s"
+
+echo "Remember to activate the `venv` environment before running python3 main.py."
