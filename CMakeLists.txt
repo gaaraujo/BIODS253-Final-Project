@@ -35,7 +35,7 @@ set(AMGX_CUSTOM_PATH "" CACHE PATH "Custom AMGX installation path")
 if(AMGX_CUSTOM_PATH)
     set(AMGX_ROOT_DIR "${AMGX_CUSTOM_PATH}")
 else()
-    set(AMGX_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/amgx")
+    set(AMGX_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/extern/amgx")
 endif()
 
 set(AMGX_INCLUDE_DIR "${AMGX_ROOT_DIR}/include")
