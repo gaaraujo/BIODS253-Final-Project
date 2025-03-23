@@ -73,7 +73,7 @@ if [[ "$LOCAL_HASH" != "$REMOTE_HASH" || ( ! -f "$AMGX_LIB_LINUX" && ! -f "$AMGX
     echo "🔧 Configuring AmgX with Visual Studio generator..."
     cmake .. -DCMAKE_BUILD_TYPE=Release
     echo "🏗️ Building AmgX with cmake --build"
-    cmake --build . --config Release
+    cmake --build . --config Release --parallel
   else
     echo "🔧 Configuring AmgX with Unix Makefiles..."
     cmake .. -DCMAKE_BUILD_TYPE=Release
