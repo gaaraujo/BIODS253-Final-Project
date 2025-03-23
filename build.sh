@@ -49,11 +49,12 @@ git remote set-head origin --auto
 REMOTE_HASH=$(git rev-parse origin/HEAD)
 cd - > /dev/null
 
-AMGX_LIB_LINUX="$AMGX_DIR/lib/libamgxsh.so"
-AMGX_LIB_WINDOWS="$AMGX_DIR/lib/amgxsh.dll"
+AMGX_LIB_LINUX="$AMGX_DIR/build/libamgxsh.so"
+AMGX_LIB_WINDOWS="$AMGX_DIR/build/Release/amgxsh.dll"
 
 if [[ "$LOCAL_HASH" != "$REMOTE_HASH" || ( ! -f "$AMGX_LIB_LINUX" && ! -f "$AMGX_LIB_WINDOWS" ) ]]; then
-  echo "Building AmgX from source..."
+  echo "🔄 AmgX appears to be outdated or not yet built."
+
   cd "$AMGX_DIR"
 
   # Ensure submodules are pulled (in case user forgot --recursive)
@@ -64,12 +65,25 @@ if [[ "$LOCAL_HASH" != "$REMOTE_HASH" || ( ! -f "$AMGX_LIB_LINUX" && ! -f "$AMGX
   DEFAULT_BRANCH=$(git remote show origin | awk '/HEAD branch/ {print $NF}')
   git checkout "$DEFAULT_BRANCH"
   git pull origin "$DEFAULT_BRANCH"
+
   mkdir -p build && cd build
-  cmake .. -DCMAKE_BUILD_TYPE=Release
-  make -j$(nproc) all
+
+  # Configure build system
+  if [[ "$PLATFORM" == "Windows" ]]; then
+    echo "🔧 Configuring AmgX with Visual Studio generator..."
+    cmake .. -DCMAKE_BUILD_TYPE=Release
+    echo "🏗️ Building AmgX with cmake --build"
+    cmake --build . --config Release
+  else
+    echo "🔧 Configuring AmgX with Unix Makefiles..."
+    cmake .. -DCMAKE_BUILD_TYPE=Release
+    echo "🏗️ Building AmgX with make"
+    make -j$(nproc) all
+  fi
+
   cd "$PARENT_DIR"  # Go back to the original directory
 else
-  echo "AmgX is up to date. Skipping rebuild."
+  echo "✅ AmgX is up to date. Skipping rebuild."
 fi
 
 # Set up Python environment
