@@ -18,13 +18,13 @@ def parse_arguments():
 
     Returns:
         argparse.Namespace: Parsed command-line arguments containing:
-            - MATRIX_DIR: Directory containing matrix files (.mtx)
-            - LOG_DIR: Directory to store solver logs
-            - CONFIG_DIR: Directory containing solver config files (.json)
-            - PLOT_DIR: Directory to save plots
-            - TEMP_DIR: Temporary directory for downloads
-            - INPUT_CSV_FILE: CSV file containing matrix metadata
-            - OUTPUT_CSV_FILE: CSV file containing test results
+            - matrix_dir: Directory containing matrix files (.mtx)
+            - log_dir: Directory to store solver logs
+            - config_dir: Directory containing solver config files (.json)
+            - plot_dir: Directory to save plots
+            - temp_dir: Temporary directory for downloads
+            - input_csv: CSV file containing matrix metadata
+            - output_csv: CSV file containing test results
             - use_cpu: Whether to use CPU instead of GPU
             - pin_memory: Whether to use pinned memory
             - num_runs: Number of runs for computing averages
@@ -32,19 +32,19 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description="Run AMGX solver tests on a set of matrices from the SuiteSparse data set with different AMGX configuration files.")
     
     # Directory paths
-    parser.add_argument("-MATRIX_DIR", type=str, default="matrix_tests/matrices",
+    parser.add_argument("--matrix_dir", type=str, default="matrix_tests/matrices",
                         help="Directory containing matrix files (.mtx)")
-    parser.add_argument("-LOG_DIR", type=str, default="matrix_tests/logs",
+    parser.add_argument("--log_dir", type=str, default="matrix_tests/logs",
                         help="Directory to store solver logs")
-    parser.add_argument("-CONFIG_DIR", type=str, default="matrix_tests/configs",
+    parser.add_argument("--config_dir", type=str, default="matrix_tests/configs",
                         help="Directory containing solver config files (.json)")
-    parser.add_argument("-PLOT_DIR", type=str, default="matrix_tests/plots",
+    parser.add_argument("--plot_dir", type=str, default="matrix_tests/plots",
                         help="Directory to save plots")
-    parser.add_argument("-TEMP_DIR", type=str, default="matrix_tests/temp",
+    parser.add_argument("--temp_dir", type=str, default="matrix_tests/temp",
                         help="Temporary directory for downloads")
-    parser.add_argument("-INPUT_CSV_FILE", type=str, default="matrix_tests/matrices.csv",
+    parser.add_argument("--input_csv", type=str, default="matrix_tests/matrices.csv",
                         help="CSV file containing matrix metadata")
-    parser.add_argument("-OUTPUT_CSV_FILE", type=str, default="matrix_tests/plots/matrix_test_results.csv",
+    parser.add_argument("--output_csv", type=str, default="matrix_tests/plots/matrix_test_results.csv",
                         help="CSV file containing timings, number of iterations, and convergence")
 
     # Solver configuration
@@ -261,7 +261,7 @@ def main():
 
     global MATRIX_DIR, LOG_DIR, CONFIG_DIR, PLOT_DIR, TEMP_DIR, INPUT_CSV_FILE, OUTPUT_CSV_FILE
     MATRIX_DIR, LOG_DIR, CONFIG_DIR, PLOT_DIR, TEMP_DIR, INPUT_CSV_FILE, OUTPUT_CSV_FILE = (
-        args.MATRIX_DIR, args.LOG_DIR, args.CONFIG_DIR, args.PLOT_DIR, args.TEMP_DIR, args.INPUT_CSV_FILE, args.OUTPUT_CSV_FILE
+        args.matrix_dir, args.log_dir, args.config_dir, args.plot_dir, args.temp_dir, args.input_csv, args.output_csv
     )
 
     # Print out the paths being used
