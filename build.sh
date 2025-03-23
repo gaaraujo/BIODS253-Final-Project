@@ -47,7 +47,7 @@ git fetch origin
 LOCAL_HASH=$(git rev-parse HEAD)
 git remote set-head origin --auto
 REMOTE_HASH=$(git rev-parse origin/HEAD)
-cd - > /dev/null
+cd "$PARENT_DIR" > /dev/null # Go back to the original directory 
 
 AMGX_LIB_LINUX="$AMGX_DIR/build/libamgxsh.so"
 AMGX_LIB_WINDOWS="$AMGX_DIR/build/Release/amgxsh.dll"
@@ -66,6 +66,7 @@ if [[ "$LOCAL_HASH" != "$REMOTE_HASH" || ( ! -f "$AMGX_LIB_LINUX" && ! -f "$AMGX
   git checkout "$DEFAULT_BRANCH"
   git pull origin "$DEFAULT_BRANCH"
 
+  rm -rf build # VERY IMPORTANT!
   mkdir -p build && cd build
 
   # Configure build system
@@ -125,6 +126,7 @@ else
 fi
 
 # Build your main app
+rm -rf build # VERY IMPORTANT!
 mkdir -p build && cd build
 cmake ..
 make -j$(nproc)

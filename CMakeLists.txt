@@ -39,7 +39,15 @@ else()
 endif()
 
 set(AMGX_INCLUDE_DIR "${AMGX_ROOT_DIR}/include")
-set(AMGX_LIBRARY_DIR "${AMGX_ROOT_DIR}/lib")
+set(AMGX_LIBRARY_DIR "${AMGX_ROOT_DIR}/build")
+
+if(APPLE)
+    message(FATAL_ERROR "AMGX is not supported on macOS. Compilation aborted.")
+elseif(WIN32)
+    set(AMGX_LIBRARY_DIR "${AMGX_ROOT_DIR}/build/Release")
+else()  # Default to Linux
+    set(AMGX_LIBRARY_DIR "${AMGX_ROOT_DIR}/build")
+endif()
 
 # Ensure AMGX headers and library exist
 if(NOT EXISTS "${AMGX_INCLUDE_DIR}/amgx_c.h")
