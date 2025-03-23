@@ -55,6 +55,11 @@ AMGX_LIB_WINDOWS="$AMGX_DIR/lib/amgxsh.dll"
 if [[ "$LOCAL_HASH" != "$REMOTE_HASH" || ( ! -f "$AMGX_LIB_LINUX" && ! -f "$AMGX_LIB_WINDOWS" ) ]]; then
   echo "Building AmgX from source..."
   cd "$AMGX_DIR"
+
+  # Ensure submodules are pulled (in case user forgot --recursive)
+  echo "Ensuring AmgX submodules are initialized..."
+  git submodule update --init --recursive
+
   # Get default branch (main or master, etc.)
   DEFAULT_BRANCH=$(git remote show origin | awk '/HEAD branch/ {print $NF}')
   git checkout "$DEFAULT_BRANCH"
