@@ -45,7 +45,8 @@ cd "$AMGX_DIR"
 echo "Checking for updates to AmgX..."
 git fetch origin
 LOCAL_HASH=$(git rev-parse HEAD)
-REMOTE_HASH=$(git rev-parse origin/master)
+git remote set-head origin --auto
+REMOTE_HASH=$(git rev-parse origin/HEAD)
 cd - > /dev/null
 
 AMGX_LIB_LINUX="$AMGX_DIR/lib/libamgxsh.so"
@@ -54,8 +55,10 @@ AMGX_LIB_WINDOWS="$AMGX_DIR/lib/amgxsh.dll"
 if [[ "$LOCAL_HASH" != "$REMOTE_HASH" || ( ! -f "$AMGX_LIB_LINUX" && ! -f "$AMGX_LIB_WINDOWS" ) ]]; then
   echo "Building AmgX from source..."
   cd "$AMGX_DIR"
-  git checkout master
-  git pull origin master
+  # Get default branch (main or master, etc.)
+  DEFAULT_BRANCH=$(git remote show origin | awk '/HEAD branch/ {print $NF}')
+  git checkout "$DEFAULT_BRANCH"
+  git pull origin "$DEFAULT_BRANCH"
   mkdir -p build && cd build
   cmake .. -DCMAKE_BUILD_TYPE=Release
   make -j$(nproc) all
