@@ -51,7 +51,7 @@ def parse_arguments():
                         help="Directory to store solver logs")
     parser.add_argument("--output_dir", type=str, default="matrix_tests/output",
                         help="Directory to save results and plots")
-    parser.add_argument("--output_csv", type=str, default="matrix_test_results.csv",
+    parser.add_argument("--output_csv", type=str, default="amgx_results.csv",
                         help="Name of the CSV file to save in output_dir")
 
     # Solver configuration
