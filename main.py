@@ -59,7 +59,7 @@ def parse_arguments():
                         help="Use CPU instead of GPU for solving")
     parser.add_argument("--pin_memory", type=bool, default=True,
                         help="Whether to use pinned memory for GPU transfers")
-    parser.add_argument("--num_runs", type=int, default=11,
+    parser.add_argument("--num_runs", type=int, default=5,
                         help="Number of runs for computing average performance")
 
     args = parser.parse_args()
@@ -119,7 +119,7 @@ def parse_arguments():
 
     return args
 
-def run_test(matrix_path, config_file, log_dir, use_cpu=False, pin_memory=True, k=11):
+def run_test(matrix_path, config_file, log_dir, use_cpu=False, pin_memory=True, k=5):
     """Run AMGX solver tests on a given matrix with specified configuration.
     
     Args:

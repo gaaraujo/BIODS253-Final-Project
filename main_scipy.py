@@ -34,7 +34,7 @@ def parse_arguments():
                         help="Name of the CSV file to save in output_dir")
 
     # Solver configuration
-    parser.add_argument("--num_runs", type=int, default=11,
+    parser.add_argument("--num_runs", type=int, default=5,
                         help="Number of runs for computing average performance")
 
     args = parser.parse_args()
@@ -105,7 +105,7 @@ def cg_solve(A, b, M):
     
     return solve_time, num_iterations[0], residual, status, x
 
-def run_test(matrix_path, k=11):
+def run_test(matrix_path, k=5):
     """Run SciPy CG solver test on a given matrix."""
     matrix_name = os.path.basename(matrix_path).replace(".mtx", "")
     print("---------------------------------------------")
