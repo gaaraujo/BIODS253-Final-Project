@@ -264,7 +264,7 @@ def main():
     if results:
         output_csv_path = os.path.join(args.output_dir, args.output_csv)
         save_results_to_csv(results, output_csv_path)
-        plot_results(output_csv_path, args.output_dir)
+        plot_results(output_csv_path, args.output_dir, "amgx")
     else:
         print("[WARNING] No results to plot or save.")
 
