@@ -18,11 +18,11 @@ esac
 echo "Detected OS: $PLATFORM"
 
 # Load modules if on cluster (Linux HPC-like environment)
-echo "NOTE: Make sure the following modules are loaded appropriately for your system and added to your path:"
-if [[ "$PLATFORM" == "Linux" ]]; then
-  echo "module load cuda/12.6 cmake/3.24 python/3.12"
-  module load cuda/12.6 cmake/3.24 python/3.12  # <- change as needed
+if [[ "$PLATFORM" == "Linux" ]] && command -v ml &>/dev/null; then
+  echo "Loading required modules (cuda, cmake, python)..."
+  ml cuda/12 cmake/3.24 python/3.12
 else
+  echo "NOTE: Make sure the following modules are loaded appropriately for your system and added to your path:"
   echo "cuda/12.x.x cmake/3.24 python/3.x.x"
 fi
 

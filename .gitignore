@@ -1,6 +1,8 @@
 matrix_tests/matrices/*
 matrix_tests/logs/*
 matrix_tests/temp/*
+matrix_tests/output_*/
+sherlock_output/
 build/
 venv/
 *.pyc
