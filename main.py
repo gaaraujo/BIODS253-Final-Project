@@ -57,8 +57,8 @@ def parse_arguments():
     # Solver configuration
     parser.add_argument("--use_cpu", action="store_true", default=False,
                         help="Use CPU instead of GPU for solving")
-    parser.add_argument("--pin_memory", type=bool, default=True,
-                        help="Whether to use pinned memory for GPU transfers")
+    parser.add_argument("--no_pin_memory", action='store_true',
+                       help="Disable pinned memory for GPU transfers")
     parser.add_argument("--num_runs", type=int, default=5,
                         help="Number of runs for computing average performance")
 
@@ -96,7 +96,7 @@ def parse_arguments():
 
     print("\nSolver Configuration:")
     print(f"  🖥️  Using {'CPU' if args.use_cpu else 'GPU'}")
-    print(f"  🔒 Memory pinning: {'enabled' if args.pin_memory else 'disabled'}")
+    print(f"  🔒 Memory pinning: {'disabled' if args.no_pin_memory else 'enabled'}")
     print(f"  🔄 Number of runs: {args.num_runs}")
     print()
 
@@ -163,11 +163,9 @@ def run_test(matrix_path, config_file, log_dir, use_cpu=False, pin_memory=True, 
         # **Create the solver once**
         solver = pyAMGXSolver.AMGXSolver(config_file, use_cpu=use_cpu, gpu_ids=[0], pin_memory=pin_memory, log_file=log_file)
 
-        # **Reinitialize matrix** instead of creating a new solver
-        solver.initialize_matrix(row_ptr, col_indices, values)
-
         # **First run (always executed)**
         start_time = time.time()
+        solver.initialize_matrix(row_ptr, col_indices, values)
         x, status, iterations, residual = solver.solve(b)
         end_time = time.time()
 
@@ -191,6 +189,7 @@ def run_test(matrix_path, config_file, log_dir, use_cpu=False, pin_memory=True, 
             # **Repeat for (k-1) additional runs**
             for i in range(k - 1):
                 start_time = time.time()
+                solver.initialize_matrix(row_ptr, col_indices, values)
                 x, status, iterations, residual = solver.solve(b)
                 end_time = time.time()
 
@@ -255,7 +254,7 @@ def main():
         for config_file in config_files:
             result = run_test(matrix_path, config_file, args.log_dir,
                             use_cpu=args.use_cpu, 
-                            pin_memory=args.pin_memory, 
+                            pin_memory=not args.no_pin_memory, 
                             k=args.num_runs)
             if result:
                 results.append(result)
