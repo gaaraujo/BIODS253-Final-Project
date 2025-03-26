@@ -148,7 +148,7 @@ main() {
         $COMMON_ARGS \
         --use_cpu \
         --output_csv amgx_results_cpu.csv \
-        --config_file matrix_tests/configs/minjie_CPU.json
+        --config_file matrix_tests/configs_cpu/minjie_CPU.json
     
     # Test 3: GPU AMGX solver without pinned memory
     run_test "GPU AMGX solver (no pinned memory)" $PYTHON main.py \

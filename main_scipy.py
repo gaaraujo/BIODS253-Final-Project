@@ -98,7 +98,7 @@ def cg_solve(A, b, M):
         num_iterations[0] += 1
 
     start_time = time.time()
-    x, status = spla.cg(A, b, M=M, callback=callback, atol=1e-6, rtol=0., maxiter=None)
+    x, status = spla.cg(A, b, M=M, callback=callback, atol=1e-6, rtol=0., maxiter=30000)
     solve_time = time.time() - start_time
 
     residual = np.linalg.norm(A @ x - b)
