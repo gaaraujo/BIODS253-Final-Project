@@ -108,7 +108,7 @@ else
 fi
 
 # Add PYTHONPATH line if not already in activate script
-PYTHONPATH_LINE="export PYTHONPATH=\"$PARENT_DIR/build:\$PYTHONPATH\""
+PYTHONPATH_LINE="export PYTHONPATH=\"$PARENT_DIR/build:\${PYTHONPATH:-}\""
 if ! grep -Fxq "$PYTHONPATH_LINE" "$ACTIVATE_FILE"; then
   echo "$PYTHONPATH_LINE" >> "$ACTIVATE_FILE"
   echo "✅ PYTHONPATH updated in venv activation script."
