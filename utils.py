@@ -129,8 +129,8 @@ def save_results_to_csv(results, output_csv):
     }
 
     for result in results:
-        matrix_name, num_rows, _, solve_time, iterations, status, config_name = result
-        
+        matrix_name, num_rows, elapsed_time, amgx_time, iterations, status, config_name = result
+        solve_time = max(elapsed_time, amgx_time)
         data["Matrix"].append(matrix_name)
         data["Config"].append(config_name)
         data["NumRows"].append(num_rows)
