@@ -27,7 +27,7 @@
         "solver": "PCG",
         "print_solve_stats": 1,
         "obtain_timings": 1,
-        "max_iters": 30000,
+        "max_iters": 3000,
         "monitor_residual": 1,
         "store_res_history": 1,
         "gmres_n_restart": 30,

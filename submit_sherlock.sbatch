@@ -27,10 +27,3 @@
 
 # Run the test
 ./run.sh
-
-# Test 3: GPU AMGX solver without pinned memory
-run_test "GPU AMGX solver (no pinned memory)" python3 main.py \
-    $COMMON_ARGS \
-    --no_pin_memory \
-    --output_csv amgx_results_no_pin.csv \
-    --config_file matrix_tests/configs/minjie.json
