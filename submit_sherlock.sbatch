@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=AMGX_Profile
 #SBATCH -p gpu
-#SBATCH --time=12:00:00
+#SBATCH --time=24:00:00
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
 #SBATCH --gpus-per-task=1
@@ -27,3 +27,4 @@
 
 # Run the test
 ./run.sh
+./run_large.sh
