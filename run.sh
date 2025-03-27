@@ -143,26 +143,14 @@ main() {
         --output_csv amgx_results.csv \
         --config_dir matrix_tests/configs
     
-    # Test 2: CPU AMGX solver
-    run_test "CPU AMGX solver" $PYTHON main.py \
-        $COMMON_ARGS \
-        --use_cpu \
-        --output_csv amgx_results_cpu.csv \
-        --config_file matrix_tests/configs_cpu/minjie_CPU.json
-    
-    # Test 3: GPU AMGX solver without pinned memory
+    # Test 2: GPU AMGX solver without pinned memory
     run_test "GPU AMGX solver (no pinned memory)" $PYTHON main.py \
         $COMMON_ARGS \
         --no_pin_memory \
         --output_csv amgx_results_no_pin.csv \
         --config_file matrix_tests/configs/minjie.json
     
-    # Test 4: SciPy CG solver
-    run_test "SciPy CG solver" $PYTHON main_scipy.py \
-        $COMMON_ARGS \
-        --output_csv scipy_results.csv
-    
-    log_message "🎉 All tests completed successfully!"
+    log_message "🎉 All GPU tests completed successfully!"
 }
 
 # Run main function and capture any errors

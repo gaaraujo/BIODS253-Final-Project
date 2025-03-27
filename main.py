@@ -211,7 +211,7 @@ def run_test(matrix_path, config_file, log_dir, use_cpu=False, pin_memory=True, 
             avg_iterations = np.mean(amgx_iterations) if amgx_iterations else None
 
         # Clean up only once
-        solver.cleanup()
+        del solver
 
         solver_status = solver_statuses[-1]
         print(f"[RESULT] {matrix_name} ({config_name}): Num. Rows={num_rows}, Solver Status={solver_status}, "

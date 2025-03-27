@@ -27,4 +27,4 @@
 
 # Run the test
 ./run.sh
-./run_large.sh
+./run_cpu.sh
