@@ -7,6 +7,8 @@ import tarfile
 import shutil
 import pandas as pd
 import matplotlib.pyplot as plt
+import platform
+import subprocess
 
 # Base URL for downloading SuiteSparse matrices
 BASE_URL = "https://suitesparse-collection-website.herokuapp.com/MM"
@@ -116,27 +118,38 @@ def save_results_to_csv(results, output_csv):
     
     Args:
         results (list): List of tuples containing:
-            (matrix_name, num_rows, elapsed_time, solve_time, iterations, status, config_name)
+            (matrix_name, num_rows, elapsed_time, amgx_time, iterations, status, config_name, use_cpu, pin_memory, cpu_specs, gpu_specs)
         output_csv (str): Path to save the results CSV
     """
     data = {
         "Matrix": [],
         "Config": [],
         "NumRows": [],
-        "SolveTime": [],
+        "ElapsedTime": [],
+        "AMGXTime": [],
         "Iterations": [],
-        "Success": []
+        "Success": [],
+        "CPUMode": [],
+        "PinMemory": [],
+        "CPUSpecs": [],
+        "GPUSpecs": [],
+        "System": []
     }
 
     for result in results:
-        matrix_name, num_rows, elapsed_time, amgx_time, iterations, status, config_name = result
-        solve_time = max(elapsed_time, amgx_time)
+        matrix_name, num_rows, elapsed_time, amgx_time, iterations, status, config_name, use_cpu, pin_memory, cpu_specs, gpu_specs, system = result
         data["Matrix"].append(matrix_name)
         data["Config"].append(config_name)
         data["NumRows"].append(num_rows)
-        data["SolveTime"].append(solve_time)
+        data["ElapsedTime"].append(elapsed_time)
+        data["AMGXTime"].append(amgx_time)
         data["Iterations"].append(iterations)
         data["Success"].append(1 if status == 0 else 0)
+        data["CPUMode"].append(use_cpu)
+        data["PinMemory"].append(pin_memory)
+        data["CPUSpecs"].append(cpu_specs)
+        data["GPUSpecs"].append(gpu_specs)
+        data["System"].append(system)
 
     df = pd.DataFrame(data)
     df.to_csv(output_csv, index=False)
@@ -161,10 +174,10 @@ def plot_results(csv_file, plot_dir, prefix):
     for config_name, group in df.groupby('Config'):
             data[config_name] = {
             "sizes": group[group['Success'] == 1]['NumRows'].values,
-            "amgx_times": group[group['Success'] == 1]['SolveTime'].values,
+            "amgx_times": group[group['Success'] == 1]['ElapsedTime'].values,
             "iterations": group[group['Success'] == 1]['Iterations'].values,
             "failed_sizes": group[group['Success'] == 0]['NumRows'].values,
-            "failed_amgx_times": group[group['Success'] == 0]['SolveTime'].values,
+            "failed_amgx_times": group[group['Success'] == 0]['ElapsedTime'].values,
             "failed_iterations": group[group['Success'] == 0]['Iterations'].values
         }
 
@@ -265,3 +278,35 @@ def import_pyAMGXSolver():
 
     import pyAMGXSolver
     return pyAMGXSolver
+
+def get_cpu_specs():
+    try:
+        if platform.system() == 'Windows':
+            result = subprocess.check_output(['wmic', 'cpu', 'get', 'name'], shell=True)
+            cpu_name = result.decode().split('\n')[1].strip()
+        else:  # Linux / Unix-like
+            result = subprocess.check_output(['lscpu'])
+            for line in result.decode().split('\n'):
+                if 'Model name' in line:
+                    cpu_name = line.split(':')[1].strip()
+                    break
+            else:
+                cpu_name = platform.processor()
+        return cpu_name
+    except Exception as e:
+        return f"unknown"
+
+def get_gpu_specs():
+    try:
+        result = subprocess.check_output(["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader"])
+        gpus = result.decode("utf-8").strip().split("\n")
+        return ", ".join(gpus)
+    except Exception as e:
+        return "unknown"
+    
+def get_system():
+    try:
+        result = platform.system()
+        return result
+    except Exception as e:
+        return "unknown"

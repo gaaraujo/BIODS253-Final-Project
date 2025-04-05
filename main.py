@@ -3,7 +3,7 @@ import time
 import numpy as np
 from utils import (
     load_matrix, get_matrix_files,
-    save_results_to_csv, plot_results, import_pyAMGXSolver
+    save_results_to_csv, plot_results, import_pyAMGXSolver, get_cpu_specs, get_gpu_specs, get_system
 )
 from amgx_log_parser import parse_amgx_log
 
@@ -98,6 +98,12 @@ def parse_arguments():
     print(f"  🖥️  Using {'CPU' if args.use_cpu else 'GPU'}")
     print(f"  🔒 Memory pinning: {'disabled' if args.no_pin_memory else 'enabled'}")
     print(f"  🔄 Number of runs: {args.num_runs}")
+    print()
+
+    print("\🖥️ System Configuration:")
+    print(f"  System: {get_system()}")
+    print(f"  CPU: {get_cpu_specs()}")
+    print(f"  GPU: {get_gpu_specs()}")
     print()
 
     # Validate inputs
@@ -219,7 +225,7 @@ def run_test(matrix_path, config_file, log_dir, use_cpu=False, pin_memory=True, 
               f"Avg Elapsed Time={avg_elapsed_time:.6f} s, Avg AMGX Time={avg_amgx_time:.6f} s")
 
         print("---------------------------------------------")
-        return matrix_name, num_rows, avg_elapsed_time, avg_amgx_time, avg_iterations, solver_status, config_name
+        return matrix_name, num_rows, avg_elapsed_time, avg_amgx_time, avg_iterations, solver_status, config_name, use_cpu, pin_memory, get_cpu_specs(), get_gpu_specs(), get_system()
 
     except Exception as e:
         print(f"[ERROR] Failed to solve {matrix_name} ({config_name}): {e}")
@@ -263,7 +269,7 @@ def main():
     if results:
         output_csv_path = os.path.join(args.output_dir, args.output_csv)
         save_results_to_csv(results, output_csv_path)
-        plot_results(output_csv_path, args.output_dir, "amgx")
+        # plot_results(output_csv_path, args.output_dir, "amgx")
     else:
         print("[WARNING] No results to plot or save.")
 

@@ -4,7 +4,7 @@ import numpy as np
 import scipy.sparse.linalg as spla
 from utils import (
     load_matrix, get_matrix_files,
-    save_results_to_csv, plot_results
+    save_results_to_csv, plot_results, get_gpu_specs, get_cpu_specs, get_system
 )
 import argparse
 
@@ -65,6 +65,12 @@ def parse_arguments():
     print(f"  🔄 Number of runs: {args.num_runs}")
     print()
 
+    print("\🖥️ System Configuration:")
+    print(f"  System: {get_system()}")
+    print(f"  CPU: {get_cpu_specs()}")
+    print(f"  GPU: {get_gpu_specs()}")
+    print()
+    
     # Validate inputs
     if args.input_csv and not os.path.exists(args.input_csv):
         parser.error(f"CSV file not found: {args.input_csv}")
@@ -108,6 +114,9 @@ def cg_solve(A, b, M):
 def run_test(matrix_path, k=5):
     """Run SciPy CG solver test on a given matrix."""
     matrix_name = os.path.basename(matrix_path).replace(".mtx", "")
+    config = "scipy_cg_diagjacobi"
+    use_cpu = True # Scipy runs on the CPU
+    pin_memory = False # Only applies to CPU-to-GPU memory transfers
     print("---------------------------------------------")
     try:
         A = load_matrix(matrix_path)
@@ -130,7 +139,7 @@ def run_test(matrix_path, k=5):
                   f"Iterations={iterations}, "
                   f"Residual={residual:.6e}, Solve Time={solve_time:.6f} s")
             print("---------------------------------------------")
-            return matrix_name, num_rows, solve_time, solve_time, iterations, status, "scipy_cg_diagjacobi"
+            return matrix_name, num_rows, solve_time, solve_time, iterations, status, config, use_cpu, pin_memory, get_cpu_specs(), get_gpu_specs(), get_system()
 
         # If we got here, solver converged, do remaining k-1 runs
         solve_times = []
@@ -153,7 +162,7 @@ def run_test(matrix_path, k=5):
               f"Avg Residual={avg_residual:.6e}, Avg Solve Time={avg_solve_time:.6f} s")
         print("---------------------------------------------")
 
-        return matrix_name, num_rows, avg_solve_time, avg_solve_time, avg_iterations, status, "scipy_cg_diagjacobi"
+        return matrix_name, num_rows, avg_solve_time, avg_solve_time, avg_iterations, status, config, use_cpu, pin_memory, get_cpu_specs(), get_gpu_specs(), get_system()
 
     except Exception as e:
         print(f"[ERROR] Failed to solve {matrix_name}: {e}")
@@ -184,7 +193,7 @@ def main():
     if results:
         output_csv_path = os.path.join(args.output_dir, args.output_csv)
         save_results_to_csv(results, output_csv_path)
-        plot_results(output_csv_path, args.output_dir, "scipy_cg")
+        # plot_results(output_csv_path, args.output_dir, "scipy_cg")
     else:
         print("[WARNING] No results to plot or save.")
 
