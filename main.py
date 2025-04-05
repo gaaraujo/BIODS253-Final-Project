@@ -98,9 +98,8 @@ def parse_arguments():
     print(f"  🖥️  Using {'CPU' if args.use_cpu else 'GPU'}")
     print(f"  🔒 Memory pinning: {'disabled' if args.no_pin_memory else 'enabled'}")
     print(f"  🔄 Number of runs: {args.num_runs}")
-    print()
 
-    print("\🖥️ System Configuration:")
+    print("\n🖥️ System Configuration:")
     print(f"  System: {get_system()}")
     print(f"  CPU: {get_cpu_specs()}")
     print(f"  GPU: {get_gpu_specs()}")

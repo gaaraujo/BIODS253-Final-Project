@@ -63,14 +63,13 @@ def parse_arguments():
     
     print("\nSolver Configuration:")
     print(f"  🔄 Number of runs: {args.num_runs}")
-    print()
 
-    print("\🖥️ System Configuration:")
+    print("\n🖥️ System Configuration:")
     print(f"  System: {get_system()}")
     print(f"  CPU: {get_cpu_specs()}")
     print(f"  GPU: {get_gpu_specs()}")
     print()
-    
+
     # Validate inputs
     if args.input_csv and not os.path.exists(args.input_csv):
         parser.error(f"CSV file not found: {args.input_csv}")
