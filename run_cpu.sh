@@ -54,27 +54,6 @@ setup_environment() {
     export SHERLOCK_OUTPUT=sherlock_output
     JOB_ID=${SLURM_JOB_ID:-local_run}
     export JOB_ID
-    mkdir -p "$SHERLOCK_OUTPUT/$JOB_ID"
-    
-    # Save system information
-    log_message "Saving system information..."
-    if command -v scontrol &>/dev/null && [ -n "${SLURMD_NODENAME:-}" ]; then
-        scontrol show node "$SLURMD_NODENAME" > "$SHERLOCK_OUTPUT/$JOB_ID/node_info_$JOB_ID.txt"
-    else
-        log_message "scontrol or SLURMD_NODENAME not available" > "$SHERLOCK_OUTPUT/$JOB_ID/node_info_$JOB_ID.txt"
-    fi
-
-    if command -v lscpu &>/dev/null; then
-        lscpu > "$SHERLOCK_OUTPUT/$JOB_ID/cpu_info_$JOB_ID.txt"
-    else
-        log_message "lscpu not available" > "$SHERLOCK_OUTPUT/$JOB_ID/cpu_info_$JOB_ID.txt"
-    fi
-
-    if command -v nvidia-smi &>/dev/null; then
-        nvidia-smi > "$SHERLOCK_OUTPUT/$JOB_ID/gpu_info_$JOB_ID.txt"
-    else
-        log_message "nvidia-smi not available" > "$SHERLOCK_OUTPUT/$JOB_ID/gpu_info_$JOB_ID.txt"
-    fi
     
     # Load modules if `ml` is available (common on clusters)
    if [[ "$PLATFORM" == "Linux" ]] && command -v ml &>/dev/null; then
@@ -121,7 +100,6 @@ setup_environment() {
     fi
 
     if [ -f "$ACTIVATE_PATH" ]; then
-        # shellcheck disable=SC1090
         source "$ACTIVATE_PATH"
     else
         log_message "❌ Virtual environment not found at $ACTIVATE_PATH. Exiting..."

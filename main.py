@@ -185,6 +185,10 @@ def run_test(matrix_path, config_file, log_dir, use_cpu=False, pin_memory=True, 
 
         solver_statuses.append(solver_status)
 
+        print(f"[RUN-0] {matrix_name} ({config_name}): Num. Rows={num_rows}, Solver Status={solver_status}, "
+              f"Residual={amgx_residual}, Iterations={amgx_total_iter}, "
+              f"Elapsed Time={elapsed_time:.6f} s, AMGX Time={amgx_time:.6f} s")
+
         # **If solver status is negative, do NOT repeat runs**
         if solver_status < 0:
             avg_elapsed_time = elapsed_time
@@ -204,11 +208,16 @@ def run_test(matrix_path, config_file, log_dir, use_cpu=False, pin_memory=True, 
 
                 amgx_time = log_data.get("total_time", None)
                 amgx_total_iter = log_data.get("total_iterations", None)
+                amgx_residual = log_data.get("final_residual", None)
 
                 solver_statuses.append(status)
                 elapsed_times.append(elapsed_time)
                 amgx_times.append(amgx_time)
                 amgx_iterations.append(amgx_total_iter)
+
+                print(f"[RUN-{i+1}] {matrix_name} ({config_name}): Num. Rows={num_rows}, Solver Status={solver_status}, "
+                      f"Residual={amgx_residual}, Iterations={amgx_total_iter}, "
+                      f"Elapsed Time={elapsed_time:.6f} s, AMGX Time={amgx_time:.6f} s")
 
             # Compute averages
             avg_elapsed_time = np.mean(elapsed_times) if elapsed_times else None

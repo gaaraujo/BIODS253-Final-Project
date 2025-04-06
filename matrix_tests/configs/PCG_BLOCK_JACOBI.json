@@ -1,0 +1,20 @@
+{
+    "config_version": 2, 
+    "solver": {
+        "preconditioner": {
+            "scope": "precond", 
+            "solver": "BLOCK_JACOBI",
+            "max_iters": 1
+        }, 
+        "solver": "PCG", 
+        "print_solve_stats": 1, 
+        "obtain_timings": 1, 
+        "max_iters": 1000000, 
+        "monitor_residual": 1, 
+        "store_res_history": 1, 
+        "scope": "main", 
+        "tolerance" : 1e-06, 
+        "convergence": "ABSOLUTE",
+        "norm": "L2"
+    }
+}

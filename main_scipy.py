@@ -132,6 +132,10 @@ def run_test(matrix_path, k=5):
         # First run to check convergence
         solve_time, iterations, residual, status, x = cg_solve(A, b, M)
 
+        print(f"[RUN-0] {matrix_name}: Num. Rows={num_rows}, Status={status}, "
+                  f"Iterations={iterations}, "
+                  f"Residual={residual:.6e}, Solve Time={solve_time:.6f} s")
+
         # If solver didn't converge, return without additional runs
         if status != 0:
             print(f"[RESULT] {matrix_name}: Num. Rows={num_rows}, Status={status}, "
@@ -145,11 +149,15 @@ def run_test(matrix_path, k=5):
         residuals = []
         iterations_list = []
 
-        for _ in range(k - 1):
+        for i in range(k - 1):
             solve_time, iterations, residual, status, x = cg_solve(A, b, M)
             solve_times.append(solve_time)
             residuals.append(residual)
             iterations_list.append(iterations)
+
+            print(f"[RUN-{i+1}] {matrix_name}: Num. Rows={num_rows}, Status={status}, "
+                  f"Iterations={iterations}, "
+                  f"Residual={residual:.6e}, Solve Time={solve_time:.6f} s")
 
         # Compute averages (excluding first run)
         avg_solve_time = np.mean(solve_times)
