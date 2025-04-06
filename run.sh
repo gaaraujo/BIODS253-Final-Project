@@ -58,7 +58,7 @@ setup_environment() {
     # Load modules if `ml` is available (required on Sherlock cluster)
    if [[ "$PLATFORM" == "Linux" ]] && command -v ml &>/dev/null; then
         log_message "Loading required modules (cuda, cmake, python)..."
-        ml cuda/12 cmake/3.24 python/3.12
+        ml cuda/12 cmake/3.24 python/3.12 gcc/12
     else
         log_message "Please make sure cuda, cmake, and python are available."
     fi
@@ -126,7 +126,7 @@ main() {
         $COMMON_ARGS \
         --no_pin_memory \
         --output_csv amgx_results_no_pin.csv \
-        --config_file matrix_tests/configs/minjie.json
+        --config_file matrix_tests/configs/PCG_BLOCK_JACOBI.json
     
     log_message "🎉 All GPU tests completed successfully!"
 }

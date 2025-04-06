@@ -58,7 +58,7 @@ setup_environment() {
     # Load modules if `ml` is available (common on clusters)
    if [[ "$PLATFORM" == "Linux" ]] && command -v ml &>/dev/null; then
         log_message "Loading required modules (cuda, cmake, python)..."
-        ml cuda/12 cmake/3.24 python/3.12
+        ml cuda/12 cmake/3.24 python/3.12 gcc/12
     else
         log_message "Please make sure cuda, cmake, and python are available."
     fi
@@ -120,7 +120,7 @@ main() {
         $COMMON_ARGS \
         --use_cpu \
         --output_csv amgx_results_cpu.csv \
-        --config_file matrix_tests/configs_cpu/minjie_CPU.json
+        --config_file matrix_tests/configs_cpu/PCG_BLOCK_JACOBI_CPU.json
     
     # Test 2: SciPy CG solver
     run_test "SciPy CG solver" $PYTHON main_scipy.py \
