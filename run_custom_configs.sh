@@ -43,7 +43,7 @@ run_test() {
 setup_environment() {
     log_message "Setting up environment variables..."
 
-    CPUS=${SLURM_CPUS_PER_TASK:-$(nproc)}  # Default to 8 for local testing
+    CPUS=${SLURM_CPUS_PER_TASK:-$(nproc)} 
     export OMP_NUM_THREADS=$CPUS
     export OPENBLAS_NUM_THREADS=$CPUS
     export MKL_NUM_THREADS=$CPUS
@@ -55,7 +55,7 @@ setup_environment() {
     JOB_ID=${SLURM_JOB_ID:-local_run}
     export JOB_ID
     
-    # Load modules if `ml` is available (common on clusters)
+    # Load modules if `ml` is available (required on Sherlock cluster)
    if [[ "$PLATFORM" == "Linux" ]] && command -v ml &>/dev/null; then
         log_message "Loading required modules (cuda, cmake, python)..."
         ml cuda/12 cmake/3.24 python/3.12 gcc/12
@@ -113,23 +113,38 @@ main() {
     setup_environment
     
     # Common arguments for all tests
-    COMMON_ARGS="--input_csv matrix_tests/matrices_cpu.csv --output_dir matrix_tests/output_$JOB_ID"
+    COMMON_ARGS="--input_csv matrix_tests/matrices.csv --output_dir matrix_tests/output_$JOB_ID"
 
-    # Test 2: SciPy CG solver
-    run_test "SciPy CG solver" $PYTHON main_scipy.py \
+    # Define the list of config files you want to run, in the desired order
+    CONFIG_LIST=(
+        "PCG_BLOCK_JACOBI"
+        "PCG_V"
+        "PCG_AGGREGATION_JACOBI"
+        "PCG_F"
+        "PCG_W"
+        "PCG_GS"
+        "PCG_DILU"
+        "PCGF_V"
+        "PCGF_F"
+        "PCGF_W"
+    )
+    
+    # Test 1: GPU AMGX solver with multiple configs
+    for CONFIG in "${CONFIG_LIST[@]}"; do
+        run_test "GPU AMGX solver with config $CONFIG" $PYTHON main.py \
+            $COMMON_ARGS \
+            --output_csv amgx_results_$CONFIG.csv \
+            --config_file matrix_tests/configs/$CONFIG.json
+    done
+    
+    # Test 2: GPU AMGX solver without pinned memory
+    run_test "GPU AMGX solver (no pinned memory)" $PYTHON main.py \
         $COMMON_ARGS \
-        --output_csv scipy_results.csv
+        --no_pin_memory \
+        --output_csv amgx_results_no_pin.csv \
+        --config_file matrix_tests/configs/PCG_BLOCK_JACOBI.json
     
-    log_message "🎉 All CPU tests completed successfully!"
-    
-    # Test 1: CPU AMGX solver
-    run_test "CPU AMGX solver" $PYTHON main.py \
-        $COMMON_ARGS \
-        --use_cpu \
-        --output_csv amgx_results_cpu.csv \
-        --config_file matrix_tests/configs_cpu/PCG_BLOCK_JACOBI_CPU.json
-    
-    
+    log_message "🎉 All GPU tests completed successfully!"
 }
 
 # Run main function and capture any errors

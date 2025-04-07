@@ -26,5 +26,5 @@
 #SBATCH --mail-type=BEGIN,END,FAIL
 
 # Run the test
-./run.sh
 ./run_cpu.sh
+./run_custom_configs.sh 
